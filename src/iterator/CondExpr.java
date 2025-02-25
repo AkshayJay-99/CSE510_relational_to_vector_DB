@@ -1,50 +1,46 @@
 package iterator;
-import java.lang.*;
+
 import java.io.*;
 import global.*;
 
 /**
- *  This clas will hold single select condition
- *  It is an element of linked list which is logically
- *  connected by OR operators.
+ *  This class will hold a single select condition.
+ *  It is an element of a linked list logically connected by OR operators.
  */
-
 public class CondExpr {
   
   /**
-   * Operator like "<"
+   * Operator like "<", ">", "=" etc.
    */
   public AttrOperator op;    
-  
+
   /**
-   * Types of operands, Null AttrType means that operand is not a
-   * literal but an attribute name
+   * Types of operands. Null AttrType means that operand is not a literal but an attribute name.
    */    
-  public AttrType     type1;
-  public AttrType     type2;    
- 
+  public AttrType type1;
+  public AttrType type2;    
+
   /**
-   *the left operand and right operand 
+   * The left operand and right operand 
    */ 
   public Operand operand1;
   public Operand operand2;
-  
+
   /**
-   * Pointer to the next element in linked list
+   * Pointer to the next element in the linked list
    */    
-  public CondExpr    next;   
+  public CondExpr next;   
 
   /**
    * Distance metric for Vector100Dtype comparisons.
    * Used only when both operands are of type attrVector100D.
    */
   public int distance; // Non-negative distance value
-  
+
   /**
-   *constructor
+   * Constructor
    */
-  public  CondExpr() {
-    
+  public CondExpr() {
     operand1 = new Operand();
     operand2 = new Operand();
     
@@ -65,13 +61,14 @@ public class CondExpr {
       
       Vector100Dtype vector1 = operand1.vector100D;
       Vector100Dtype vector2 = operand2.vector100D;
-      
+
       if (vector1 != null && vector2 != null) {
-        distance = (int) Vector100Dtype.computeDistance(vector1, vector2);
+        // Ensure distance is non-negative and correctly rounded
+        distance = (int) Math.round(Math.max(0, Vector100Dtype.computeDistance(vector1, vector2)));
       } else {
+        System.err.println("Warning: One or both vector operands are null in computeDistance()");
         distance = -1; // Invalid state
       }
     }
   }
 }
-

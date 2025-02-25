@@ -295,15 +295,22 @@ public class Tuple implements GlobalConst{
 
 
 
-    public Vector100Dtype get100DVectorFld(int fldNo) throws IOException, FieldNumberOutOfBoundException {
-      if (fldNo > 0 && fldNo <= fldCnt) {
-          int offset = fldOffset[fldNo - 1];
-          byte[] vectorBytes = Arrays.copyOfRange(data, offset, offset + Vector100Dtype.VECTOR_SIZE * 2);
-          return Vector100Dtype.fromByteArray(vectorBytes);
-      } else {
-          throw new FieldNumberOutOfBoundException(null, "TUPLE:TUPLE_FLDNO_OUT_OF_BOUND");
-      }
-  }
+  public Vector100Dtype get100DVectorFld(int fldNo) throws IOException, FieldNumberOutOfBoundException {
+    if (fldNo < 1 || fldNo > fldCnt) {
+        throw new FieldNumberOutOfBoundException(null, "TUPLE:TUPLE_FLDNO_OUT_OF_BOUND");
+    }
+    
+    int offset = fldOffset[fldNo - 1];
+    int size = Vector100Dtype.VECTOR_SIZE * 2; // Ensure we only read 200 bytes
+
+    if (offset + size > data.length) {
+        throw new IOException("Vector100D field data out of bounds.");
+    }
+
+    byte[] vectorBytes = Arrays.copyOfRange(data, offset, offset + size);
+    return Vector100Dtype.fromByteArray(vectorBytes);
+}
+
   
   
 
@@ -374,12 +381,13 @@ public class Tuple implements GlobalConst{
     public Tuple set100DVectorFld(int fldNo, Vector100Dtype vector) throws IOException, FieldNumberOutOfBoundException {
       if (fldNo > 0 && fldNo <= fldCnt) {
           int offset = fldOffset[fldNo - 1];
-          int maxAllowedSize = fldOffset[fldNo] - offset;  // Ensure we do not overwrite
+          // int maxAllowedSize = fldOffset[fldNo] - offset;  // Ensure we do not overwrite
           byte[] vectorBytes = vector.toByteArray();
           
-          if (vectorBytes.length > maxAllowedSize) {
-              throw new IOException("Vector100D field size exceeds allocated space.");
-          }
+          if (vectorBytes.length != Vector100Dtype.VECTOR_SIZE * 2) {
+            throw new IOException("Vector100D field size must be exactly 200 bytes.");
+        }
+        
   
           System.arraycopy(vectorBytes, 0, data, offset, vectorBytes.length);
           return this;
@@ -443,7 +451,7 @@ public void setHdr (short numFlds,  AttrType types[], short strSizes[])
      break;  
     
    case AttrType.attrVector100D:
-     incr = 100 * 4;  // Each float is 4 bytes, so 100D vector needs 400 bytes
+     incr = 100 * 2;  // Each short is 2 bytes, so 100D vector needs 200 bytes
      break;
  
  
@@ -470,7 +478,7 @@ public void setHdr (short numFlds,  AttrType types[], short strSizes[])
      break;
 
    case AttrType.attrVector100D:
-     incr = 100 * 4;  // Each float is 4 bytes, so 100D vector needs 400 bytes
+     incr = 100 * 2;  // Each short is 2 bytes, so 100D vector needs 200 bytes
      break;
  
 
@@ -595,7 +603,11 @@ public void setHdr (short numFlds,  AttrType types[], short strSizes[])
   if (vector == null) {
       return "null";
   }
-  return java.util.Arrays.toString(vector.getValues());
+  short[] values = vector.getValues();
+  int len = values.length;
+  return "Vector100D(" + (len > 5 ? 
+      Arrays.toString(Arrays.copyOf(values, 5)) + "...]" 
+      : Arrays.toString(values)) + ")";
 }
 
   /**

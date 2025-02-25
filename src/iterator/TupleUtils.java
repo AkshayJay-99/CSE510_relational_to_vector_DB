@@ -87,7 +87,13 @@ public class TupleUtils
     } catch (FieldNumberOutOfBoundException e) {
         throw new TupleUtilsException(e, "FieldNumberOutOfBoundException in CompareTupleWithTuple");
     }
-    return (int) Vector100Dtype.computeDistance(t1_v, t2_v); // Return distance
+    
+    if (t1_v == null || t2_v == null) {
+      throw new TupleUtilsException(null, "Vector100Dtype field is null");
+  }
+  
+
+    return (int) Math.round(Vector100Dtype.computeDistance(t1_v, t2_v));
 	default:
 	  
 	  throw new UnknowAttrType(null, "Don't know how to handle attrSymbol, attrNull");

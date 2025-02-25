@@ -166,7 +166,12 @@ public class Convert{
       /* creates a new data output stream to write data to 
        * underlying output stream
        */
-      
+      System.out.println("Setting int value at position: " + position);
+      System.out.println("Data length: " + data.length);
+
+      if (position < 0 || position + 4 > data.length) {
+          throw new IOException("Error: Writing beyond buffer! Position: " + position + ", Data Length: " + data.length);
+      }
       OutputStream out = new ByteArrayOutputStream();
       DataOutputStream outstr = new DataOutputStream (out);
       

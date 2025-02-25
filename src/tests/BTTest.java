@@ -179,14 +179,14 @@ class BTDriver  implements GlobalConst
 	  BT.printPage(new PageId(num), keyType);
 	  break;            
 	case 5:
-	  keyType=AttrType.attrInteger;
-	  System.out.println("Please input the integer key to insert: ");
-	  key=GetStuff.getChoice(); 
-	  if(key<0) break;
-	  pageno.pid=key;
-	  rid=new RID(pageno, key);              
-	  file.insert(new IntegerKey(key), rid);
-	  break; 
+  keyType=AttrType.attrInteger;
+  System.out.println("Please input the integer key to insert: ");
+  key=GetStuff.getChoice(); 
+  if(key<0) break;
+  pageno.pid=key;
+  rid=new RID(pageno, key);              
+  file.insert(new IntegerKey(key), rid);
+  break; 
 	case 6:
 	  keyType=AttrType.attrInteger;
 	  System.out.println("Please input the integer key to delete: ");
