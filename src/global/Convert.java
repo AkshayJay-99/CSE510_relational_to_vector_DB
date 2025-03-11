@@ -35,6 +35,38 @@ public class Convert{
       
       return value;
     }
+
+  public static Vector100Dtype getVector100DValue (int position, byte []data)
+   throws java.io.IOException
+    {
+      if (position + 200 > data.length) {
+        throw new IOException("❌ ERROR: Attempted to read beyond byte array limit! Position: " 
+                              + position + ", Data Length: " + data.length);
+    }
+      InputStream in;
+      DataInputStream instr;
+
+      short[] values = new short[100];
+      byte tmp[] = new byte[200];
+      
+      // copy the value from data array out to a tmp byte array
+      System.arraycopy (data, position, tmp, 0, 200);
+      
+      /* creates a new data input stream to read data from the
+       * specified input stream
+       */
+      in = new ByteArrayInputStream(tmp);
+      instr = new DataInputStream(in);
+
+      //value = instr.readInt();
+      for(int i = 0; i < 100; i++)
+      {
+        values[i] = instr.readShort();
+      }
+      
+      return new Vector100Dtype(values);
+    }
+
   
   /**
    * read 4 bytes from given byte array at the specified position
@@ -166,12 +198,7 @@ public class Convert{
       /* creates a new data output stream to write data to 
        * underlying output stream
        */
-      System.out.println("Setting int value at position: " + position);
-      System.out.println("Data length: " + data.length);
-
-      if (position < 0 || position + 4 > data.length) {
-          throw new IOException("Error: Writing beyond buffer! Position: " + position + ", Data Length: " + data.length);
-      }
+      
       OutputStream out = new ByteArrayOutputStream();
       DataOutputStream outstr = new DataOutputStream (out);
       
@@ -185,6 +212,39 @@ public class Convert{
       
       // copies the first 4 bytes of this byte array into data[] 
       System.arraycopy (B, 0, data, position, 4);
+      
+    }
+
+    public static void setVector100DValue (Vector100Dtype value, int position, byte []data) 
+    throws java.io.IOException
+    {
+      /* creates a new data output stream to write data to 
+       * underlying output stream
+       */
+      
+      OutputStream out = new ByteArrayOutputStream(200);
+      DataOutputStream outstr = new DataOutputStream (out);
+      
+      // write the value to the output stream
+      
+      short[] values = value.getValues();
+
+      for(int i = 0; i < 100; i++)
+      {
+        outstr.writeShort(values[i]);
+      }
+
+      //byte[] vectorBytes = out.toByteArray();
+      byte []vectorBytes = ((ByteArrayOutputStream) out).toByteArray();
+
+      
+      
+      // creates a byte array with this output stream size and the
+      // valid contents of the buffer have been copied into it
+      //byte []B = ((ByteArrayOutputStream) out).toByteArray();
+      
+      // copies the first 4 bytes of this byte array into data[] 
+      System.arraycopy (vectorBytes, 0, data, position, 200);
       
     }
   
