@@ -142,6 +142,7 @@ public boolean runTests () {
 
             try {
                 rid = f.insertRecord(rec.toByteArray());
+                System.out.println(rid);
             } catch (Exception e) {
                 status = FAIL;
                 System.err.println("*** Error inserting record " + i + "\n");
@@ -331,7 +332,7 @@ protected boolean test2() {
   if (status == OK) {
       System.out.println("\n  - Verifying deletion and printing remaining vector\n");
       if (secondVector != null) {
-          System.out.println("Remaining vector after deletion:\n" + Arrays.toString(secondVector.getValues()));
+          System.out.println("Remaining vector after deletion:\n" + Arrays.toString(firstVector.getValues()));
       } else {
           System.err.println("❌ No remaining vector found!");
       }
@@ -757,8 +758,76 @@ protected boolean test3() {
   
   protected boolean test6 () {
     
-    return true;
-  }
+    PCounter.initialize();
+    System.out.println("\n  Test: Read all vectors from the heap file\n");
+    
+    boolean status = OK;
+    Scan scan = null;
+    RID rid = new RID();
+    Heapfile f = null;
+
+    System.out.println("  - Open the heap file\n");
+    try {
+        f = new Heapfile("file_1");
+    } catch (Exception e) {
+        status = FAIL;
+        System.err.println("*** Could not open heap file\n");
+        e.printStackTrace();
+    }
+
+    if (status == OK) {
+        System.out.println("  - Scanning all records from the file\n");
+        try {
+            scan = f.openScan();
+        } catch (Exception e) {
+            status = FAIL;
+            System.err.println("*** Error opening scan\n");
+            e.printStackTrace();
+        }
+    }
+
+    if (status == OK) {
+        int i = 0;
+        Tuple tuple = new Tuple();
+        boolean done = false;
+
+        while (!done) {
+            try {
+                tuple = scan.getNext(rid);
+                if (tuple == null) {
+                    done = true;
+                    break;
+                }
+            } catch (Exception e) {
+                status = FAIL;
+                e.printStackTrace();
+            }
+
+            if (!done && status == OK) {
+                DummyRecord rec = null;
+                try {
+                    rec = new DummyRecord(tuple);
+                } catch (Exception e) {
+                    System.err.println("" + e);
+                    e.printStackTrace();
+                }
+
+                // Print the vector stored in this record
+                System.out.println("Record " + i + " vector: " + Arrays.toString(rec.vector100D.getValues()));
+                i++;
+            }
+        }
+    }
+
+    // Display total disk reads/writes
+    System.out.println("\nDisk Reads: " + PCounter.rcounter);
+    System.out.println("Disk Writes: " + PCounter.wcounter);
+
+    if (status == OK)
+        System.out.println("  Test Read All Vectors completed successfully.\n");
+
+    return status;
+}
   
   protected boolean runAllTests (){
     
@@ -815,7 +884,7 @@ class DummyRecord {
     setStrRec(arecord);
     setVectorRec(arecord); // Set vector field from byte array
     data = arecord;
-    setRecLen(name.length() + VECTOR_SIZE_BYTES);
+    setRecLen(reclen);
   }
 
   /** Constructor: translate a tuple to a DummyRecord object */
