@@ -82,10 +82,13 @@ public class KeyDataEntry {
   /** Class constructor.
    */
   public KeyDataEntry( KeyClass key,  DataClass data) {
+   //System.out.println("We setting thisthing up");
      if ( key instanceof IntegerKey ) 
         this.key= new IntegerKey(((IntegerKey)key).getKey());
      else if ( key instanceof StringKey ) 
         this.key= new StringKey(((StringKey)key).getKey()); 
+   else if ( key instanceof Vector100DKey ) 
+         this.key= new Vector100DKey(((Vector100DKey) key).getKey());  
 
      if ( data instanceof IndexData ) 
         this.data= new IndexData(((IndexData)data).getData());

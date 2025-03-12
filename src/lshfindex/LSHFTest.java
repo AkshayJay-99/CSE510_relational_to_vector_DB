@@ -14,7 +14,7 @@ public class LSHFTest {
 
             // Step 1: Initialize MiniBase & Create LSH Index
             SystemDefs sysdef = new SystemDefs("minibase.lshftest", 5000, 2000, "Clock");
-            LSHFFile lshIndex = new LSHFFile("lsh_test_index", 3, 3); // h=5, L=3
+            LSHFFile lshIndex = new LSHFFile("lsh_test_index", 5, 3); // h=5, L=3
             Random random = new Random();
             short[] queryVec = new short[100];
             // Step 2: Insert Sample Vectors
@@ -31,7 +31,7 @@ public class LSHFTest {
                 //System.out.println("Creating fresh RID: Page " + rid.pageNo.pid + ", Slot " + rid.slotNo);
                 queryVec = vec;
                 lshIndex.insert(key, rid);
-                //System.out.println("                                                Inserted vector " + (i));
+                System.out.println("                                                Inserted vector " + (i));
             }
 
             // Step 3: Run Nearest Neighbor Search

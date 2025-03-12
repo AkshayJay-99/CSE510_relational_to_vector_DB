@@ -98,8 +98,7 @@ public class LSHFFile// extends IndexFile
             String bucketKey = "layer" + i;
 
             btreeIndex[layer] = new LSHFBTreeFile("BTree_layer" + layer, AttrType.attrString, 250, 1);
-            PageId currentNodePage = btreeIndex[layer].getRootPageId();
-            PageId childPage = null;
+            
 
             for(int j = 0; j < hashes; j++)
             {
@@ -111,24 +110,24 @@ public class LSHFFile// extends IndexFile
                 //storeInHeapFile(hashVal, layer, key, rid);
                 
                 
-                //btreeIndex[layer].insert( new StringKey(bucketKey), rid);
+                btreeIndex[layer].insert( new StringKey(bucketKey), rid);
 
-                if (j < hashes - 1) {
-                    System.out.println("🛠 Storing Internal Key in Internal Node: " + bucketKey);
-                    childPage = btreeIndex[layer].insertInternal(new StringKey(bucketKey), currentNodePage);
-                    currentNodePage = childPage;
-                 }
+                // if (j < hashes - 1) {
+                //     System.out.println("🛠 Storing Internal Key in Internal Node: " + bucketKey);
+                //     childPage = btreeIndex[layer].insertInternal(new StringKey(bucketKey), currentNodePage);
+                //     currentNodePage = childPage;
+                //  }
             }
 
             //System.out.println("new bucket key: " + bucketKey);
 
             Vector100DKey vectorKey = new Vector100DKey(key);
-            System.out.println("📌 Inserting Leaf Node: " + vectorKey + " | RID -> Page: " + rid.pageNo.pid + ", Slot: " + rid.slotNo);
+            //System.out.println("📌 Inserting Leaf Node: " + vectorKey + " | RID -> Page: " + rid.pageNo.pid + ", Slot: " + rid.slotNo);
             btreeIndex[layer].insertLeaf(vectorKey, rid, bucketKey);
             
         }
 
-        printBTreeStructure(0);
+        //printBTreeStructure(0);
        
     }
 
@@ -142,6 +141,7 @@ public class LSHFFile// extends IndexFile
 
         try {
             System.out.println("\n🔍 **BTree Structure for Layer " + layer + "**");
+
             LSHFBTFileScan scan = btreeIndex[layer].new_scan(null, null);
             KeyDataEntry entry;
 

@@ -50,14 +50,19 @@ public class LSHFBT  implements GlobalConst{
   public final static int keyCompare(KeyClass key1, KeyClass key2)
     throws KeyNotMatchException
     {
+
+      //System.out.println("key1: " + key1 + " key2 " + key2);
       if ( (key1 instanceof IntegerKey) && (key2 instanceof IntegerKey) ) {
 	
-	return  (((IntegerKey)key1).getKey()).intValue() 
-	  - (((IntegerKey)key2).getKey()).intValue();
+	        return  (((IntegerKey)key1).getKey()).intValue() - (((IntegerKey)key2).getKey()).intValue();
       }
       else if  ( (key1 instanceof StringKey) && (key2 instanceof StringKey)){
         return ((StringKey)key1).getKey().compareTo(((StringKey)key2).getKey());
       }
+      else if  ( (key1 instanceof Vector100DKey) && (key2 instanceof Vector100DKey)){
+        return ((Vector100DKey)key1).compareTo(((Vector100DKey)key2));
+      }
+
       
       else { throw new  KeyNotMatchException(null, "key types do not match");}
     } 
@@ -154,6 +159,9 @@ public class LSHFBT  implements GlobalConst{
       int n;
       try {
 	
+        // System.out.println("🔍 DEBUG: Extracting entry at offset " + offset + 
+        //             ", length " + length + ", expected type " + keyType);
+
 	if ( nodeType==NodeType.INDEX ) {
 	  n=4;
 	  data= new IndexData( Convert.getIntValue(offset+length-4, from));
@@ -180,7 +188,7 @@ public class LSHFBT  implements GlobalConst{
   {
       //System.out.println("printing offset: " + offset + " from: " + from);
 
-      System.out.println("🔍 DEBUG: Extracting Vector100DKey - Offset: " + offset + ", Data Length: " + from.length);
+      //System.out.println("🔍 DEBUG: Extracting Vector100DKey - Offset: " + offset + ", Data Length: " + from.length);
 
       int expectedSize = 200 + ((nodeType == NodeType.LEAF) ? 8 : 4);  // ✅ Ensure full key fits with metadata
 
@@ -188,13 +196,24 @@ public class LSHFBT  implements GlobalConst{
           throw new ConvertException(null, "❌ ERROR: Offset exceeds available data! Offset: " + offset + ", Max: " + from.length);
       }
 
-      
+
       key= new Vector100DKey( Convert.getVector100DValue(offset, from));
+
+      // System.out.println("🔍 DEBUG: Extracted Vector100DKey: " + key.getClass().getName());
+      // if (key instanceof Vector100DKey) {
+      //   System.out.println("🔍 DEBUG: Extracted Vector100DKey: " + ((Vector100DKey) key).getKey());
+      // } else {
+      //     System.out.println("❌ ERROR: Extracted key is NOT a Vector100DKey. Found type: " + key.getClass().getName());
+      // }
   }
 	else 
-          throw new KeyNotMatchException(null, "key types do not match");
-	
-	return new KeyDataEntry(key, data);
+      throw new KeyNotMatchException(null, "key types do not match within LSHFBT");
+    //System.out.println("🔍 Final before doing return Extracted Vector100DKey: " + key.getClass().getName());
+    KeyDataEntry returnEntry = new KeyDataEntry(key, data);
+
+    //System.out.println("🔍 Final before doing return Extracted Vector100DKey: " + returnEntry.key);
+
+	  return returnEntry;//new KeyDataEntry(key, data);
 	
       } 
       catch ( IOException e) {
@@ -220,8 +239,8 @@ public class LSHFBT  implements GlobalConst{
       try{
         n=getKeyLength(entry.key);
         m=n;
-        System.out.println("--------We are within the getBytesEntry--------");
-        System.out.println("what is the value of n: " + n);
+        //System.out.println("--------We are within the getBytesEntry--------");
+        //System.out.println("what is the value of n: " + n);
 
         if( entry.data instanceof IndexData )
 	          n+=4;
@@ -239,12 +258,12 @@ public class LSHFBT  implements GlobalConst{
 			       0, data);            
         }
         else if ( entry.key instanceof Vector100DKey ) {
-          System.out.println("what is the value of m: " + m);
-          System.out.println("what is the length of data: " + data.length);
+          //System.out.println("what is the value of m: " + m);
+          //System.out.println("what is the length of data: " + data.length);
           Vector100DKey vectorKey = (Vector100DKey) entry.key;
           Vector100Dtype vectorValue = vectorKey.getKey();
 	        Convert.setVector100DValue( vectorValue, 0, data);  
-          System.out.println("--------Convert success--------");
+          //System.out.println("--------Convert success--------");
 
         }
         else throw new KeyNotMatchException(null, "key types do not match");

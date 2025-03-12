@@ -26,7 +26,7 @@ public class Vector100DKey extends KeyClass {
      */
     public Vector100Dtype getKey() 
     {
-        return key;
+        return this.key;
     }
 
     public int getKeyLength()
@@ -58,6 +58,7 @@ public class Vector100DKey extends KeyClass {
     }
 
     public int compareTo(Vector100DKey other) {
-        return (int)this.key.computeDistance(key, other.key);
+        double distance = this.key.computeDistance(this.key, other.key);
+        return Double.compare(distance, 0.0);
     }
 }

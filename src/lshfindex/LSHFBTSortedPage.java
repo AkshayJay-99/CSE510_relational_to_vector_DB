@@ -13,6 +13,8 @@ import global.*;
 import diskmgr.*;
 import heap.*;
 
+import java.util.Arrays;
+
 
 /**
  * LSHFBTSortedPage class 
@@ -117,10 +119,11 @@ public class LSHFBTSortedPage  extends HFPage{
         
 
         // 🔍 Debugging Output
-        System.out.println("🔍 DEBUG: Inserting record - Size: " + recordSize );
+        //System.out.println("🔍 DEBUG: Inserting record - Size: " + recordSize );
 
 
        rid=super.insertRecord(record);
+       //System.out.println("successfully made it past insertRecord this is the RID in SortedPage: " + rid);
          if (rid==null) return null;
 	 
          if ( entry.data instanceof LeafData )
@@ -128,18 +131,32 @@ public class LSHFBTSortedPage  extends HFPage{
          else  //  entry.data instanceof IndexData              
 	        nType= NodeType.INDEX;
 	 
-	 
+	//  System.out.println("🔍 DEBUG: Checking node type before insert: " + nType + 
+  //                  " | Entry Type: " + entry.key.getClass().getSimpleName());
 	 // performs a simple insertion sort
 	 for (i=getSlotCnt()-1; i > 0; i--) 
 	   {
 	     
 	     KeyClass key_i, key_iplus1;
+
+	      // System.out.println("🔍 DEBUG: Extracting key at offset " + getSlotOffset(i) + 
+        //            ", length " + getSlotLength(i));
+        // byte[] rawData = new byte[getSlotLength(i)];
+        // System.arraycopy(getpage(), getSlotOffset(i), rawData, 0, getSlotLength(i));
+
+        // System.out.println("🔍 DEBUG: Raw Key Bytes: " + Arrays.toString(rawData));
+
+        KeyClass key_iTester = LSHFBT.getEntryFromBytes(getpage(), getSlotOffset(i), getSlotLength(i), keyType, nType).key;
+        
+
+	     key_i=LSHFBT.getEntryFromBytes(getpage(), getSlotOffset(i), getSlotLength(i), keyType, nType).key;
 	     
-	     key_i=LSHFBT.getEntryFromBytes(getpage(), getSlotOffset(i), 
-					getSlotLength(i), keyType, nType).key;
-	     
-	     key_iplus1=LSHFBT.getEntryFromBytes(getpage(), getSlotOffset(i-1), 
-					     getSlotLength(i-1), keyType, nType).key;
+	     key_iplus1=LSHFBT.getEntryFromBytes(getpage(), getSlotOffset(i-1), getSlotLength(i-1), keyType, nType).key;
+
+        // System.out.println("Extracted key_i: " + key_i);
+        // System.out.println("Extracted key_iplus1: " + key_iplus1);
+
+        
 	     
         if (LSHFBT.keyCompare(key_i, key_iplus1) < 0)
         {

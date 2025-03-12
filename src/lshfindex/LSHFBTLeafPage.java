@@ -100,14 +100,14 @@ public class LSHFBTLeafPage extends LSHFBTSortedPage {
         }
         else if(key instanceof Vector100DKey)
         {
-          System.out.println("We setting then entry value");
+          //System.out.println("We setting then entry value");
           entry = new KeyDataEntry((Vector100DKey) key, dataRid);
         }
         else
         {
           throw new LeafInsertRecException(null, "Unsupported Type");
         }
-        System.out.println("Checking in leaf page: " + entry.key);
+        //System.out.println("Checking in leaf page: " + entry.key);
         return insertRecord(entry);
       }
       catch(Exception e) {
