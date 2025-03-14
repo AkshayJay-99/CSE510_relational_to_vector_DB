@@ -154,7 +154,6 @@ public class pnodeSplayPQ extends pnodePQ
   public pnode deq() 
   {
     if (root == null) return null;
-    
     count --;
     pnodeSplayNode t = root;
     pnodeSplayNode l = root.lt;

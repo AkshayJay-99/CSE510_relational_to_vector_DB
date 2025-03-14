@@ -1,8 +1,5 @@
 package iterator; 
 
-import global.*;
-import bufmgr.*;
-import diskmgr.*;
 import heap.*;
 
 /**
@@ -15,6 +12,8 @@ public class pnode {
 
   /** the tuple reference */
   public Tuple   tuple;
+
+  public double distance;
 
   /**
    * class constructor, sets <code>run_num</code> to 0 and <code>tuple</code>
@@ -35,6 +34,13 @@ public class pnode {
   {
     run_num = runNum;
     tuple = t;
+  }
+
+  public pnode(int runNum, Tuple t, double dist) 
+  {
+    run_num = runNum;
+    tuple = t;
+    distance = dist;
   }
   
 }

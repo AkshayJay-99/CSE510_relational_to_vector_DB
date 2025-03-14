@@ -1,12 +1,8 @@
 package iterator;
 
-import java.io.*; 
 import global.*;
-import bufmgr.*;
-import diskmgr.*;
 import heap.*;
-import index.*;
-import chainexception.*;
+import java.io.*;
 
 /**
  * The Sort class sorts a file. All necessary information are passed as 
@@ -43,8 +39,13 @@ public class Sort extends Iterator implements GlobalConst
   private OBuf         o_buf;
   private SpoofIbuf[]  i_buf;
   private PageId[]     bufs_pids;
-  private boolean useBM = true; // flag for whether to use buffer manager
+  private boolean useBM = false; // flag for whether to use buffer manager
   
+  private Vector100Dtype target;
+  private int          k_val = 0;
+  private int          returned_values;
+  private AttrType sortFldType;         
+
   /**
    * Set up for merging the runs.
    * Open an input buffer for each run, and insert the first element (min)
@@ -76,7 +77,7 @@ public class Sort extends Iterator implements GlobalConst
     
     // construct the lists, ignore TEST for now
     // this is a patch, I am not sure whether it works well -- bingjie 4/20/98
-    
+
     for (i=0; i<n_R_runs; i++) {
       byte[][] apage = new byte[1][];
       apage[0] = bufs[i];
@@ -106,6 +107,13 @@ public class Sort extends Iterator implements GlobalConst
 	temp_tuple.print(_in);
 	*/
 	cur_node.tuple = temp_tuple; // no copy needed
+  if (this.sortFldType.attrType == AttrType.attrVector100D) {
+
+      Vector100Dtype tupleVector = temp_tuple.get100DVectorFld(_sort_fld);
+      double distance = tupleVector.computeDistance(tupleVector, this.target);
+      cur_node.distance = distance;
+  }
+
 	try {
 	  Q.enq(cur_node);
 	}
@@ -120,7 +128,8 @@ public class Sort extends Iterator implements GlobalConst
     }
     return; 
   }
-  
+
+
   /**
    * Generate sorted runs.
    * Using heap sort.
@@ -140,6 +149,7 @@ public class Sort extends Iterator implements GlobalConst
 	   JoinsException,
 	   Exception
   {
+    this.sortFldType = sortFldType;
     Tuple tuple; 
     pnode cur_node;
     pnodeSplayPQ Q1 = new pnodeSplayPQ(_sort_fld, sortFldType, order);
@@ -196,43 +206,91 @@ public class Sort extends Iterator implements GlobalConst
       if (tuple == null) {
 	break;
       }
-      cur_node = new pnode();
-      cur_node.tuple = new Tuple(tuple); // tuple copy needed --  Bingjie 4/29/98 
 
-      pcurr_Q.enq(cur_node);
+      if(sortFldType.attrType == AttrType.attrVector100D)
+      {
+          Vector100Dtype tupleVector = tuple.get100DVectorFld(_sort_fld);
+          double distance = tupleVector.computeDistance(tupleVector, this.target);
+          cur_node = new pnode(run_num, new Tuple(tuple), distance);
+          //cur_node.tuple = new Tuple(tuple);
+          //cur_node.distance = distance; 
+          pcurr_Q.enq(cur_node);
+      }
+      else
+      {
+          cur_node = new pnode();
+          cur_node.tuple = new Tuple(tuple); // tuple copy needed --  Bingjie 4/29/98 
+
+          pcurr_Q.enq(cur_node);
+      }
+
       p_elems_curr_Q ++;
     }
     
     // now the queue is full, starting writing to file while keep trying
     // to add new tuples to the queue. The ones that does not fit are put
     // on the other queue temperarily
+    double lastElemDistance;
+    if (order.tupleOrder == TupleOrder.Descending) {
+      lastElemDistance = Double.POSITIVE_INFINITY; 
+    } else {
+      lastElemDistance = 0; 
+    }
+  
+    
     while (true) {
       cur_node = pcurr_Q.deq();
       if (cur_node == null) break; 
       p_elems_curr_Q --;
       
-      comp_res = TupleUtils.CompareTupleWithValue(sortFldType, cur_node.tuple, _sort_fld, lastElem);  // need tuple_utils.java
+      if(sortFldType.attrType == AttrType.attrVector100D)
+      {
+        if((cur_node.distance < lastElemDistance && order.tupleOrder == TupleOrder.Ascending) || 
+            (cur_node.distance > lastElemDistance && order.tupleOrder == TupleOrder.Descending))
+        {
+          try {
+            pother_Q.enq(cur_node);   
+          }
+          catch (UnknowAttrType e) {
+            throw new SortException(e, "Sort.java: UnknowAttrType caught from Q.enq()");
+          }
+            p_elems_other_Q ++;
+        }
+        else
+        {
+            lastElemDistance = cur_node.distance;
+
+            o_buf.Put(cur_node.tuple);
+        }
+      }
+      else
+      {
+        comp_res = TupleUtils.CompareTupleWithValue(sortFldType, cur_node.tuple, _sort_fld, lastElem);  // need tuple_utils.java
+        
+        if ((comp_res < 0 && order.tupleOrder == TupleOrder.Ascending) || (comp_res > 0 && order.tupleOrder == TupleOrder.Descending)) {
+        // doesn't fit in current run, put into the other queue
+          try {
+            pother_Q.enq(cur_node);
+          }
+          catch (UnknowAttrType e) {
+            throw new SortException(e, "Sort.java: UnknowAttrType caught from Q.enq()");
+          }
+          p_elems_other_Q ++;
+        }
+        else {
+          // set lastElem to have the value of the current tuple,
+          // need tuple_utils.java
+
+          TupleUtils.SetValue(lastElem, cur_node.tuple, _sort_fld, sortFldType);
+          // write tuple to output file, need io_bufs.java, type cast???
+          //	System.out.println("Putting tuple into run " + (run_num + 1)); 
+          //	cur_node.tuple.print(_in);
+
+          o_buf.Put(cur_node.tuple);
+        }
+      }
+
       
-      if ((comp_res < 0 && order.tupleOrder == TupleOrder.Ascending) || (comp_res > 0 && order.tupleOrder == TupleOrder.Descending)) {
-	// doesn't fit in current run, put into the other queue
-	try {
-	  pother_Q.enq(cur_node);
-	}
-	catch (UnknowAttrType e) {
-	  throw new SortException(e, "Sort.java: UnknowAttrType caught from Q.enq()");
-	}
-	p_elems_other_Q ++;
-      }
-      else {
-	// set lastElem to have the value of the current tuple,
-	// need tuple_utils.java
-	TupleUtils.SetValue(lastElem, cur_node.tuple, _sort_fld, sortFldType);
-	// write tuple to output file, need io_bufs.java, type cast???
-	//	System.out.println("Putting tuple into run " + (run_num + 1)); 
-	//	cur_node.tuple.print(_in);
-	
-	o_buf.Put(cur_node.tuple);
-      }
       
       // check whether the other queue is full
       if (p_elems_other_Q == max_elems) {
@@ -268,7 +326,12 @@ public class Sort extends Iterator implements GlobalConst
 	o_buf.init(bufs, _n_pages, tuple_size, temp_files[run_num], false);
 	
 	// set the last Elem to be the minimum value for the sort field
-	if(order.tupleOrder == TupleOrder.Ascending) {
+  if (order.tupleOrder == TupleOrder.Descending) {
+    lastElemDistance = Double.POSITIVE_INFINITY; 
+  } else {
+    lastElemDistance = 0; 
+  }
+  if(order.tupleOrder == TupleOrder.Ascending) {
 	  try {
 	    MIN_VAL(lastElem, sortFldType);
 	  } catch (UnknowAttrType e) {
@@ -308,15 +371,22 @@ public class Sort extends Iterator implements GlobalConst
 	  if (tuple == null) {
 	    break;
 	  }
-	  cur_node = new pnode();
-	  cur_node.tuple = new Tuple(tuple); // tuple copy needed --  Bingjie 4/29/98 
+      if(sortFldType.attrType == AttrType.attrVector100D)
+      {
+          Vector100Dtype tupleVector = tuple.get100DVectorFld(_sort_fld);
+          double distance = tupleVector.computeDistance(tupleVector, this.target);
+          cur_node = new pnode(run_num, new Tuple(tuple), distance);
+          //cur_node.tuple = new Tuple(tuple);
+          //cur_node.distance = distance; 
+          pcurr_Q.enq(cur_node);
+      }
+      else
+      {
+          cur_node = new pnode();
+          cur_node.tuple = new Tuple(tuple); // tuple copy needed --  Bingjie 4/29/98 
 
-	  try {
-	    pcurr_Q.enq(cur_node);
-	  }
-	  catch (UnknowAttrType e) {
-	    throw new SortException(e, "Sort.java: UnknowAttrType caught from Q.enq()");
-	  }
+          pcurr_Q.enq(cur_node);
+      }
 	  p_elems_curr_Q ++;
 	}
       }
@@ -362,6 +432,11 @@ public class Sort extends Iterator implements GlobalConst
 	  // need io_bufs.java
 	  o_buf.init(bufs, _n_pages, tuple_size, temp_files[run_num], false);
 	  
+    if (order.tupleOrder == TupleOrder.Descending) {
+      lastElemDistance = Double.POSITIVE_INFINITY; 
+    } else {
+      lastElemDistance = 0; 
+    }
 	  // set the last Elem to be the minimum value for the sort field
 	  if(order.tupleOrder == TupleOrder.Ascending) {
 	    try {
@@ -396,7 +471,7 @@ public class Sort extends Iterator implements GlobalConst
     // close the last run
     n_tuples[run_num] = (int) o_buf.flush();
     run_num ++;
-    
+
     return run_num; 
   }
   
@@ -413,8 +488,10 @@ public class Sort extends Iterator implements GlobalConst
   {
     pnode cur_node;                // needs pq_defs.java  
     Tuple new_tuple, old_tuple;  
-
     cur_node = Q.deq();
+    if (cur_node == null) {
+      return null; 
+    }
     old_tuple = cur_node.tuple;
     /*
     System.out.print("Get ");
@@ -440,6 +517,11 @@ public class Sort extends Iterator implements GlobalConst
 	new_tuple.print(_in);
 	*/
 	cur_node.tuple = new_tuple;  // no copy needed -- I think Bingjie 4/22/98
+  if (this.sortFldType.attrType == AttrType.attrVector100D) {
+    Vector100Dtype tupleVector = new_tuple.get100DVectorFld(_sort_fld);
+    double distance = tupleVector.computeDistance(tupleVector, this.target);
+    cur_node.distance = distance;
+  }
 	try {
 	  Q.enq(cur_node);
 	} catch (UnknowAttrType e) {
@@ -477,7 +559,13 @@ public class Sort extends Iterator implements GlobalConst
     c[0] = Character.MIN_VALUE; 
     String s = new String(c);
     //    short fld_no = 1;
-    
+    short[] vec = new short[100];
+
+    for (int j = 0; j < 100; j++) {
+        vec[j] = -9999;  // Set each element to 1000
+    }
+    Vector100Dtype v = new Vector100Dtype(vec);
+
     switch (sortFldType.attrType) {
     case AttrType.attrInteger: 
       //      lastElem.setHdr(fld_no, junk, null);
@@ -490,6 +578,10 @@ public class Sort extends Iterator implements GlobalConst
     case AttrType.attrString:
       //      lastElem.setHdr(fld_no, junk, s_size);
       lastElem.setStrFld(_sort_fld, s);
+      break;
+    case AttrType.attrVector100D:
+      //      lastElem.setHdr(fld_no, junk, s_size);
+      lastElem.set100DVectorFld(_sort_fld, v);
       break;
     default:
       // don't know how to handle attrSymbol, attrNull
@@ -518,6 +610,12 @@ public class Sort extends Iterator implements GlobalConst
     char[] c = new char[1];
     c[0] = Character.MAX_VALUE; 
     String s = new String(c);
+    short[] vec = new short[100];
+
+    for (int j = 0; j < 100; j++) {
+        vec[j] = 9999;  // Set each element to 1000
+    }
+    Vector100Dtype v = new Vector100Dtype(vec);
     //    short fld_no = 1;
     
     switch (sortFldType.attrType) {
@@ -532,6 +630,10 @@ public class Sort extends Iterator implements GlobalConst
     case AttrType.attrString:
       //      lastElem.setHdr(fld_no, junk, s_size);
       lastElem.setStrFld(_sort_fld, s);
+      break;
+    case AttrType.attrVector100D:
+      //      lastElem.setHdr(fld_no, junk, s_size);
+      lastElem.set100DVectorFld(_sort_fld, v);
       break;
     default:
       // don't know how to handle attrSymbol, attrNull
@@ -619,7 +721,7 @@ public class Sort extends Iterator implements GlobalConst
     }
     
     first_time = true;
-    
+
     // as a heuristic, we set the number of runs to an arbitrary value
     // of ARBIT_RUNS
     temp_files = new Heapfile[ARBIT_RUNS];
@@ -639,7 +741,7 @@ public class Sort extends Iterator implements GlobalConst
     o_buf.init(bufs, _n_pages, tuple_size, temp_files[0], false);
     //    output_tuple = null;
     
-    max_elems_in_heap = 200;
+    max_elems_in_heap = 1000;
     sortFldLen = sort_fld_len;
     
     Q = new pnodeSplayPQ(sort_fld, in[sort_fld - 1], order);
@@ -652,6 +754,16 @@ public class Sort extends Iterator implements GlobalConst
       throw new SortException(e, "Sort.java: op_buf.setHdr() failed");
     }
   }
+
+  public Sort(AttrType[] in, short len_in, short[] str_sizes, Iterator am, int
+  sort_fld, TupleOrder sort_order, int sort_fld_len, int n_pages,
+  Vector100Dtype Target, int k) throws IOException, SortException
+  {
+      this(in, len_in, str_sizes, am, sort_fld, sort_order, sort_fld_len, n_pages);
+      this.target = Target;
+      this.k_val = k;
+  }
+
   
   /**
    * Returns the next tuple in sorted order.
@@ -673,6 +785,9 @@ public class Sort extends Iterator implements GlobalConst
 	   JoinsException,
 	   Exception
   {
+
+
+
     if (first_time) {
       // first get_next call to the sort routine
       first_time = false;
@@ -690,10 +805,18 @@ public class Sort extends Iterator implements GlobalConst
       // no more tuples availble
       return null;
     }
-    
+
+    if(k_val != 0 && returned_values >= k_val)
+    {
+      while (output_tuple != null) { 
+        output_tuple = delete_min();
+      }
+      return null;
+    }
     output_tuple = delete_min();
     if (output_tuple != null){
       op_buf.tupleCopy(output_tuple);
+      returned_values ++;
       return op_buf; 
     }
     else 

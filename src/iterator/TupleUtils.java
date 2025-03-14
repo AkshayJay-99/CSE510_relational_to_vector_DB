@@ -1,8 +1,8 @@
 package iterator;
 
 
-import heap.*;
 import global.*;
+import heap.*;
 import java.io.*;
 import java.lang.*;
 
@@ -209,6 +209,13 @@ public class TupleUtils
 	case AttrType.attrString:
 	  try {
 	    value.setStrFld(fld_no, tuple.getStrFld(fld_no));
+	  }catch (FieldNumberOutOfBoundException e){
+	    throw new TupleUtilsException(e, "FieldNumberOutOfBoundException is caught by TupleUtils.java");
+	  }
+	  break;
+	case AttrType.attrVector100D:
+	  try {
+	    value.set100DVectorFld(fld_no, tuple.get100DVectorFld(fld_no));
 	  }catch (FieldNumberOutOfBoundException e){
 	    throw new TupleUtilsException(e, "FieldNumberOutOfBoundException is caught by TupleUtils.java");
 	  }

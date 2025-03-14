@@ -1,7 +1,7 @@
 package iterator;
 
-import heap.*;
 import global.*;
+import heap.*;
 import java.io.*;
 /**
  * Jtuple has the appropriate types.
@@ -126,6 +126,9 @@ public class Projection
 		  break;
 		case AttrType.attrString:
 		  Jtuple.setStrFld(i+1, t1.getStrFld(perm_mat[i].offset));
+		  break;
+		case AttrType.attrVector100D:
+		  Jtuple.set100DVectorFld(i+1, t1.get100DVectorFld(perm_mat[i].offset));
 		  break;
 		default:
 		  

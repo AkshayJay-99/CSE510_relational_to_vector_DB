@@ -1,8 +1,8 @@
 package global;
 
 import bufmgr.*;
-import diskmgr.*;
 import catalog.*;
+import diskmgr.*;
 
 public class SystemDefs {
   public static BufMgr	JavabaseBM;
@@ -11,7 +11,7 @@ public class SystemDefs {
   
   public static String  JavabaseDBName;
   public static String  JavabaseLogName;
-  public static boolean MINIBASE_RESTART_FLAG = false;
+  public static boolean MINIBASE_RESTART_FLAG = Boolean.parseBoolean(System.getenv("MINIBASE_RESTART_FLAG"));
   public static String	MINIBASE_DBNAME;
   
   public SystemDefs (){};
