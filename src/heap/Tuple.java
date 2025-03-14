@@ -2,11 +2,10 @@
 
 package heap;
 
+import global.*;
 import java.io.*;
 import java.lang.*;
 import java.util.Arrays;
-
-import global.*;
 
 
 

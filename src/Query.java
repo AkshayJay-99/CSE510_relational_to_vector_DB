@@ -113,8 +113,7 @@ public class Query {
             FldSpec[] projlist = new FldSpec[noOutFlds];
             RelSpec rel = new RelSpec(RelSpec.outer); 
             for (int i = 0; i < noOutFlds; i++) {
-
-                projlist[i] = new FldSpec(rel, i + 1);
+                projlist[i] = new FldSpec(rel, Integer.parseInt(parts[3+i].trim()));
             }
             System.out.println("Processing Range Query...");
             System.out.println("Query Field: " + queryField);
@@ -137,13 +136,13 @@ public class Query {
                 }
 
                 List<Tuple> results = rs.get_all_results();
-                AttrType[] selectedAttrTypes = new AttrType[parts.length-3];
-                for (int i = 0; i < parts.length-3; i++) {
-                    selectedAttrTypes[i] = attrType[Integer.parseInt(parts[3+i].trim()) - 1];
-                }
+
                 for (Tuple result : results) {
-                    Vector100Dtype resultVector = result.get100DVectorFld(queryField);
-                    result.print(selectedAttrTypes);
+                    AttrType[] out_types = new AttrType[noOutFlds];
+                    for (int i = 0; i < noOutFlds; i++) {
+                        out_types[i] = attrType[projlist[i].offset - 1];
+                        }
+                    result.print(out_types);
                     //System.out.println("Result: " + result.get100DVectorFld(2));
                 
                 }
@@ -189,7 +188,7 @@ public class Query {
             // 🔹 Read the target vector from the file
             Vector100Dtype targetVector = readVectorFromFile(targetVectorFile);
             int noOutFlds = parts.length - 3;
-            FldSpec[] projlist = new FldSpec[attrSize];
+            FldSpec[] projlist = new FldSpec[noOutFlds];
             RelSpec rel = new RelSpec(RelSpec.outer); 
             for (int i = 0; i < noOutFlds; i++) {
                 projlist[i] = new FldSpec(rel, Integer.parseInt(parts[3+i].trim()));
@@ -215,14 +214,13 @@ public class Query {
                 }
 
                 List<Tuple> results = nn.get_all_results();
-                AttrType[] selectedAttrTypes = new AttrType[parts.length-3];
-                for (int i = 0; i < parts.length-3; i++) {
-                    selectedAttrTypes[i] = attrType[Integer.parseInt(parts[3+i].trim()) - 1];
 
-                }
                 for (Tuple result : results) {
-                    Vector100Dtype resultVector = result.get100DVectorFld(queryField);
-                    result.print(selectedAttrTypes);
+                    AttrType[] out_types = new AttrType[noOutFlds];
+                    for (int i = 0; i < noOutFlds; i++) {
+                        out_types[i] = attrType[projlist[i].offset - 1];
+                        }
+                    result.print(out_types);
                     //System.out.println("Result: " + result.get100DVectorFld(2));
                 
                 }
@@ -234,6 +232,7 @@ public class Query {
     public static void flushPages() {
         try {
             SystemDefs.JavabaseBM.flushAllPages(); // Assuming there's a method to flush all pages
+            System.out.println("All pages flushed to disk.");
         } catch (Exception e) {
             System.err.println("Error flushing pages: " + e.getMessage());
             e.printStackTrace();

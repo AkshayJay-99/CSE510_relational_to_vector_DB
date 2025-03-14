@@ -44,19 +44,12 @@ public class RSIndexScan {
         resultTuples = new ArrayList<>(); 
         Sort sort = null;
 
-        try {
-            f = new Heapfile(relName);
-        } catch (Exception e) {
-            throw new IndexException(e, "RSIndexScan: Heapfile not created");
+        FldSpec[] inFlds = new FldSpec[noInFlds];
+        RelSpec rel = new RelSpec(RelSpec.outer); 
+        for (int i = 0; i < noInFlds; i++) {
+            inFlds[i] = new FldSpec(rel, i + 1);
         }
-        int sort_out_fld = -1;
-        for (int i = 0; i < noOutFlds; i++) {
-            if (perm_mat[i].offset == fldNum) {
-                // This is the field we are sorting on
-                sort_out_fld = i+1;
-                break;
-            }
-        }
+
         if (index.indexType == IndexType.LSHF_Index) {
             // Use LSHF Index for nearest neighbor search
             try {
@@ -68,13 +61,13 @@ public class RSIndexScan {
             }
         } else if (index.indexType == IndexType.None) {
             try {
-                fscan = new FileScan(relName, _types, _s_sizes, (short) _noInFlds, _noOutFlds, perm_mat, _selects);
+                fscan = new FileScan(relName, _types, _s_sizes, (short) _noInFlds, _noInFlds, inFlds, _selects);
             }
             catch (Exception e) {
                 e.printStackTrace();
             }
             try {
-                sort = new Sort(types, (short) _noOutFlds, _s_sizes, fscan, sort_out_fld, new TupleOrder(TupleOrder.Ascending), 30, 1024, query, 0);
+                sort = new Sort(types, (short) _noInFlds, _s_sizes, fscan, fldNum, new TupleOrder(TupleOrder.Ascending), 30, 1024, query, 0);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -90,8 +83,17 @@ public class RSIndexScan {
                 try {
                     if (query.computeDistance(t.get100DVectorFld(fldNum), query) <= distance) {
                         Tuple newTuple = new Tuple(t);
-                        System.out.println(query.computeDistance(t.get100DVectorFld(fldNum), query));
-                        resultTuples.add(newTuple);
+                        Tuple projectedTuple = new Tuple();
+                        AttrType[] out_types = new AttrType[noOutFlds];
+                        for (int i = 0; i < noOutFlds; i++) {
+                            out_types[i] = types[perm_mat[i].offset - 1];
+                        }
+                        projectedTuple.setHdr((short) noOutFlds, out_types, _s_sizes);
+
+
+                        Projection.Project(newTuple, types, projectedTuple, perm_mat, noOutFlds);
+                        resultTuples.add(projectedTuple);
+                        //resultTuples.add(newTuple);
                     }
                     t = sort.get_next();
                 } catch (Exception e) {
