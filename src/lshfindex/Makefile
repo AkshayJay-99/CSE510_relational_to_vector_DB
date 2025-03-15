@@ -1,4 +1,4 @@
-JDKPATH = /Users/ertugrulcoban/Library/Java/JavaVirtualMachines/temurin-21.0.4/Contents/Home
+JDKPATH = /usr/lib/jvm/java-17-openjdk-amd64
 LIBPATH = /home/ajsoorya/CSE510/minjava/javaminibase/src
 CLASSPATH = $(JDKPATH)/lib/classes.zip:.:..:$(LIBPATH)
 BINPATH = $(JDKPATH)/bin

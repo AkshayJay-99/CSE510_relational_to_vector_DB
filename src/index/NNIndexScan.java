@@ -5,6 +5,7 @@ import iterator.*;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import lshfindex.*;
 
 public class NNIndexScan {
     private List<RID> nnResults;  // List of RIDs from rangeSearch
@@ -53,9 +54,27 @@ public class NNIndexScan {
         if (index.indexType == IndexType.LSHF_Index) {
             // Use LSHF Index for nearest neighbor search
             try {
-                // LSHFFile lshIndex = new LSHFFile(indName);
-                // nnResults = lshIndex.NN_Search(query, count);
-                processResults();
+                AttrType[] out_types = new AttrType[noOutFlds];
+                String[] parts = indName.split("_");  
+                int h = Integer.parseInt(parts[2]);  // Extract h value
+                int L = Integer.parseInt(parts[3]);  // Extract L value              
+                LSHFFile lshf = new LSHFFile(indName, h, L);
+                KeyDataEntry[] nn_results = lshf.NN_Search(query, count);
+                Heapfile heapfile = new Heapfile("data_heap.in");
+                for (KeyDataEntry k : nn_results) {
+                    Tuple projectedTuple = new Tuple();
+                    Tuple tuple = new Tuple();
+                    RID rid = ((LeafData) k.data).getData();
+                    tuple = heapfile.getRecord(rid);
+                    tuple.setHdr((short) noInFlds, types,  str_sizes);
+                    for (int i = 0; i < noOutFlds; i++) {
+                        out_types[i] = types[perm_mat[i].offset - 1];
+                    }
+                    projectedTuple.setHdr((short) noOutFlds, out_types, _s_sizes);
+                    Projection.Project(tuple, types, projectedTuple, perm_mat, noOutFlds);
+                    resultTuples.add(projectedTuple);              
+                }
+                lshf.close();
             } catch (Exception e) {
                 throw new IndexException(e, "NNIndexScan: LSHFFile NN search failed");
             }
@@ -110,41 +129,6 @@ public class NNIndexScan {
             }
         } else {
             throw new UnknownIndexTypeException("NNIndexScan: Unsupported index type");
-        }
-    }
-
-    /**
-     * Process all results in one call and store them in resultTuples
-     */
-    private void processResults() throws IndexException, IOException {
-        for (RID rid : nnResults) {
-            Tuple tuple;
-            try {
-                tuple = f.getRecord(rid);
-                tuple.setHdr((short) _noInFlds, _types, _s_sizes);
-            } catch (Exception e) {
-                throw new IndexException(e, "NNIndexScan: Failed to retrieve record");
-            }
-
-            // Apply selection conditions
-            boolean eval;
-            try {
-                eval = PredEval.Eval(_selects, tuple, null, _types, null);
-            } catch (Exception e) {
-                throw new IndexException(e, "NNIndexScan: Predicate evaluation failed");
-            }
-
-            if (eval) {
-                // Project the necessary fields and store
-                try {
-                    Tuple projectedTuple = new Tuple();
-                    projectedTuple.setHdr((short) _noOutFlds, _types, _s_sizes);
-                    Projection.Project(tuple, _types, projectedTuple, perm_mat, _noOutFlds);
-                    resultTuples.add(projectedTuple);
-                } catch (Exception e) {
-                    throw new IndexException(e, "NNIndexScan: Projection failed");
-                }
-            }
         }
     }
 

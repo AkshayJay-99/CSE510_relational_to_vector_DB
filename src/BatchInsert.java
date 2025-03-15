@@ -9,6 +9,7 @@ import heap.Tuple;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.util.Arrays;
+import lshfindex.*;
 
 public class BatchInsert {
     public static void main(String[] args) {
@@ -40,7 +41,7 @@ public class BatchInsert {
             AttrType[] schema = new AttrType[numAttributes];
             for (int i = 0; i < numAttributes; i++) {
                 int typeCode = Integer.parseInt(attrTypes[i]);
-                attr_char += (char) (typeCode);
+                attr_char += (char) (typeCode+ '0');
                 switch (typeCode) {
                     case 1: schema[i] = new AttrType(AttrType.attrInteger); break;
                     case 2: schema[i] = new AttrType(AttrType.attrReal); break;
@@ -49,18 +50,27 @@ public class BatchInsert {
                     default: throw new IllegalArgumentException("Unknown attribute type: " + typeCode);
                 }
             }
+            attr_char +=(char) (h+ '0');
+            attr_char +=(char) (L+ '0');
+            System.out.println(attr_char);
             Heapfile heapfile_sc = new Heapfile("sc_heap.in");
             Tuple sc_tuple = new Tuple();
             sc_tuple.setHdr((short) 1, new AttrType[]{new AttrType(AttrType.attrString)}, new short[]{30});
-            sc_tuple.setStrFld(1, attr_char);   
+            sc_tuple.setStrFld(1, attr_char);  
             RID sc_rid = heapfile_sc.insertRecord(sc_tuple.getTupleByteArray());
             System.out.println("Schema stored with RID: Page " + sc_rid.pageNo.pid + ", Slot " + sc_rid.slotNo);
 
             // 🔹 Step 4: Create Heapfile
             Heapfile heapfile = new Heapfile("data_heap.in");
 
+
             // 🔹 Step 5a: Create LSH-Forest Index Placeholder
-            //LSHFIndex lshIndex = new LSHFIndex(dbName + "_lsh", h, L);
+            LSHFFile[] lshf = new LSHFFile[numAttributes];
+            for (int i = 0; i < numAttributes; i++) {
+                if (schema[i].attrType == AttrType.attrVector100D) {
+                    lshf[i] = new LSHFFile(dbName+'_'+(i+1)+'_'+h+'_'+L, h, L);
+                }
+            }
 
             // 🔹 Step 5b: Read and insert tuples
             String line;
@@ -102,9 +112,17 @@ public class BatchInsert {
                 }
             
                 // Insert tuple into heap file
-            //System.out.println(tuple.get100DVectorFld(2));
-              RID recordID =  heapfile.insertRecord(tuple.getTupleByteArray());
-              //System.out.println("Record ID: Page " + recordID.pageNo.pid + ", Slot " + recordID.slotNo);
+                //System.out.println(tuple.get100DVectorFld(2));
+                RID recordID =  heapfile.insertRecord(tuple.getTupleByteArray());
+                for (int i = 0; i < numAttributes; i++) {
+                    if (schema[i].attrType == AttrType.attrVector100D) {
+                        Vector100Dtype vector100D = new Vector100Dtype();
+                        vector100D = tuple.get100DVectorFld(i + 1);
+                        lshf[i].insert(vector100D, recordID);
+                        //System.out.println("Inserted into LSHF: Page " + recordID.pageNo.pid + ", Slot " + recordID.slotNo + " for attribute " + (i + 1+" with vector: " + vector100D));
+                    }
+                }  
+                //System.out.println("Record ID: Page " + recordID.pageNo.pid + ", Slot " + recordID.slotNo);
                 //verifyInsertion(dbName,schema);
                 // 🔹 Insert ALL vectors from the tuple into LSH-Forest
                 // for (short[] vector : vectorList) {
@@ -113,10 +131,16 @@ public class BatchInsert {
             //System.out.println("Creating fresh RID: Page " + recordID.pageNo.pid + ", Slot " + recordID.slotNo);
 
             }
+            for (int i = 0; i < numAttributes; i++) {
+                if (schema[i].attrType == AttrType.attrVector100D) {
+                    lshf[i].close();
+                    //saveLSHIndex(lshf[i]);
+                }
+            }
             reader.close();
             //System.out.println("Batch Insertion Complete!");
             flushPages();
-
+            
             // Optionally, here's how you could shut down the system entirely, which also ensures data is saved
             SystemDefs.JavabaseDB.closeDB();  // Close the database
             // 🔹 Step 6: Output disk usage stats (added here!)

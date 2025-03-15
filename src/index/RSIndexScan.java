@@ -5,6 +5,7 @@ import iterator.*;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import lshfindex.*;
 
 public class RSIndexScan {
     private List<RID> rangeResults;  // List of RIDs from rangeSearch
@@ -49,13 +50,31 @@ public class RSIndexScan {
         for (int i = 0; i < noInFlds; i++) {
             inFlds[i] = new FldSpec(rel, i + 1);
         }
-
         if (index.indexType == IndexType.LSHF_Index) {
             // Use LSHF Index for nearest neighbor search
             try {
-                //LSHFFile lshIndex = new LSHFFile(indName);
-                //RSResults = lshIndex.rangeSearch(query, count);
-                processResults();
+
+                AttrType[] out_types = new AttrType[noOutFlds];
+                String[] parts = indName.split("_");  
+                int h = Integer.parseInt(parts[2]);  // Extract h value
+                int L = Integer.parseInt(parts[3]);  // Extract L value              
+                LSHFFile lshf = new LSHFFile(indName, h, L);
+                KeyDataEntry[] rs_results = lshf.Range_Search(query, distance);
+                Heapfile heapfile = new Heapfile("data_heap.in");
+                for (KeyDataEntry k : rs_results) {
+                    Tuple projectedTuple = new Tuple();
+                    Tuple tuple = new Tuple();
+                    RID rid = ((LeafData) k.data).getData();
+                    tuple = heapfile.getRecord(rid);
+                    tuple.setHdr((short) noInFlds, types,  str_sizes);
+                    for (int i = 0; i < noOutFlds; i++) {
+                        out_types[i] = types[perm_mat[i].offset - 1];
+                    }
+                    projectedTuple.setHdr((short) noOutFlds, out_types, _s_sizes);
+                    Projection.Project(tuple, types, projectedTuple, perm_mat, noOutFlds);
+                    resultTuples.add(projectedTuple);              
+                }
+                lshf.close();
             } catch (Exception e) {
                 throw new IndexException(e, "RSIndexScan: LSHFFile RS search failed");
             }
@@ -82,6 +101,7 @@ public class RSIndexScan {
             while (t != null) {
                 try {
                     if (query.computeDistance(t.get100DVectorFld(fldNum), query) <= distance) {
+                        System.out.println("Found a match within distance: " + query.computeDistance(t.get100DVectorFld(fldNum), query));
                         Tuple newTuple = new Tuple(t);
                         Tuple projectedTuple = new Tuple();
                         AttrType[] out_types = new AttrType[noOutFlds];
@@ -89,11 +109,8 @@ public class RSIndexScan {
                             out_types[i] = types[perm_mat[i].offset - 1];
                         }
                         projectedTuple.setHdr((short) noOutFlds, out_types, _s_sizes);
-
-
                         Projection.Project(newTuple, types, projectedTuple, perm_mat, noOutFlds);
                         resultTuples.add(projectedTuple);
-                        //resultTuples.add(newTuple);
                     }
                     t = sort.get_next();
                 } catch (Exception e) {
@@ -109,41 +126,6 @@ public class RSIndexScan {
             }
         } else {
             throw new UnknownIndexTypeException("RSIndexScan: Unsupported index type");
-        }
-    }
-
-    /**
-     * Process all results in one call and store them in resultTuples
-     */
-    private void processResults() throws IndexException, IOException {
-        for (RID rid : rangeResults) {
-            Tuple tuple;
-            try {
-                tuple = f.getRecord(rid);
-                tuple.setHdr((short) _noInFlds, _types, _s_sizes);
-            } catch (Exception e) {
-                throw new IndexException(e, "RSIndexScan: Failed to retrieve record");
-            }
-
-            // Apply selection conditions
-            boolean eval;
-            try {
-                eval = PredEval.Eval(_selects, tuple, null, _types, null);
-            } catch (Exception e) {
-                throw new IndexException(e, "RSIndexScan: Predicate evaluation failed");
-            }
-
-            if (eval) {
-                // Project the necessary fields and store
-                try {
-                    Tuple projectedTuple = new Tuple();
-                    projectedTuple.setHdr((short) _noOutFlds, _types, _s_sizes);
-                    Projection.Project(tuple, _types, projectedTuple, perm_mat, _noOutFlds);
-                    resultTuples.add(projectedTuple);
-                } catch (Exception e) {
-                    throw new IndexException(e, "RSIndexScan: Projection failed");
-                }
-            }
         }
     }
 

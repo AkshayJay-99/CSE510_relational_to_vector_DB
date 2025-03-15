@@ -6,6 +6,7 @@ import index.NNIndexScan;
 import index.RSIndexScan;
 import iterator.*;
 import java.io.*;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -34,7 +35,7 @@ public class Query {
             BufferedReader reader = new BufferedReader(new FileReader(qsName));
             String queryLine = reader.readLine().trim(); // Read first query
 
-            SystemDefs sysdef = new SystemDefs( dbpath, numPages, numBuf, "Clock" );
+            SystemDefs sysdef = new SystemDefs( dbpath, 0, numBuf, "Clock" );
             Heapfile heapfile = new Heapfile("data_heap.in");
 
             FldSpec[] sc_projlist = new FldSpec[1];
@@ -57,10 +58,10 @@ public class Query {
             short _len_in1 = 0;
             if (t != null) {
                 schemaString = t.getStrFld(1);
-                _len_in1 = (short) schemaString.length();
-                _schema = new AttrType[schemaString.length()];
-                for (int i = 0; i < schemaString.length(); i++) {
-                    int typeCode = schemaString.charAt(i);
+                _len_in1 = (short) (schemaString.length()-2);
+                _schema = new AttrType[schemaString.length()-2];
+                for (int i = 0; i < schemaString.length()-2; i++) {
+                    int typeCode = schemaString.charAt(i) - '0';
                     switch (typeCode) {
                         case 1: _schema[i] = new AttrType(AttrType.attrInteger); break;
                         case 2: _schema[i] = new AttrType(AttrType.attrReal); break;
@@ -70,6 +71,9 @@ public class Query {
                     }
                 }
             }
+            int L = schemaString.charAt(schemaString.length()-1) - '0';
+            int h = schemaString.charAt(schemaString.length()-2) - '0';
+
             while (t != null) {
                 try {
                     t = sc_scan.get_next();
@@ -81,9 +85,9 @@ public class Query {
 
             // 🔹 Step 2: Identify query type
             if (queryLine.startsWith("Range(")) {
-                processRangeQuery(queryLine, useLSH, _schema, _len_in1);
+                processRangeQuery(dbName, h, L, queryLine, useLSH, _schema, _len_in1);
             } else if (queryLine.startsWith("NN(")) {
-                processNearestNeighborQuery(queryLine, useLSH, _schema,  _len_in1);
+                processNearestNeighborQuery(dbName, h, L, queryLine, useLSH, _schema, _len_in1);
             } else {
                 System.out.println("Invalid query type in file: " + qsName);
             }
@@ -99,7 +103,7 @@ public class Query {
         System.out.println("Disk pages written: " + PCounter.wcounter);
     }
 
-    private static void processRangeQuery(String queryLine, boolean useLSH, AttrType[] attrType, int attrSize) {
+    private static void processRangeQuery(String dbName, int h, int L, String queryLine, boolean useLSH, AttrType[] attrType, int attrSize) {
         try {
             // 🔹 Extract parameters from "Range(QA, T, D, ...)"
 
@@ -120,67 +124,46 @@ public class Query {
             System.out.println("Target Vector File: " + targetVectorFile);
             System.out.println("Distance Threshold: " + distanceThreshold);
 
+
+            List<Tuple> results = new ArrayList<>();
+            AttrType[] out_types = new AttrType[noOutFlds];
+            RSIndexScan rs = null;
             if (useLSH) {
                 System.out.println("Using LSH-Forest for range query...");
-                // TODO: Implement LSH-Forest range search
-            } else {
+            try {
+                rs = new RSIndexScan(new IndexType(IndexType.LSHF_Index), "data_heap.in", dbName+'_'+queryField+'_'+h+'_'+L, attrType, getStringSizes(attrType), attrSize, noOutFlds,  projlist, null, queryField, targetVector, distanceThreshold);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }              
+            } 
+            else {
                 System.out.println("Performing full heapfile scan for range query...");
                 TupleOrder[] order = new TupleOrder[2];
                 order[0] = new TupleOrder(TupleOrder.Ascending);
                 order[1] = new TupleOrder(TupleOrder.Descending);
-                RSIndexScan rs = null;
                 try {
                     rs = new RSIndexScan(new IndexType(IndexType.None), "data_heap.in", "", attrType, getStringSizes(attrType), attrSize, noOutFlds,  projlist, null, queryField, targetVector, distanceThreshold);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-
-                List<Tuple> results = rs.get_all_results();
-
-                for (Tuple result : results) {
-                    AttrType[] out_types = new AttrType[noOutFlds];
-                    for (int i = 0; i < noOutFlds; i++) {
-                        out_types[i] = attrType[projlist[i].offset - 1];
-                        }
-                    result.print(out_types);
-                    //System.out.println("Result: " + result.get100DVectorFld(2));
-                
-                }
             }
+            results = rs.get_all_results();
+
+            for (Tuple result : results) {
+                for (int i = 0; i < noOutFlds; i++) {
+                    out_types[i] = attrType[projlist[i].offset - 1];
+                    }
+                result.print(out_types);
+            }
+            
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private static void processNearestNeighborQuery(String queryLine, boolean useLSH, AttrType[] attrType, short attrSize) {
+    private static void processNearestNeighborQuery(String dbName, int h, int L, String queryLine, boolean useLSH, AttrType[] attrType, short attrSize) {
         try {
             // 🔹 Extract parameters from "NN(QA, T, K, ...)"
-            String[] parts = queryLine.replace("NN(", "").replace(")", "").split(",");
-            int queryField = Integer.parseInt(parts[0].trim());
-            String targetVectorFile = parts[1].trim()+".txt";
-            int k = Integer.parseInt(parts[2].trim());
-
-            // 🔹 Read the target vector from the file
-
-            System.out.println("Processing Nearest Neighbor Query...");
-            System.out.println("Query Field: " + queryField);
-            System.out.println("Target Vector File: " + targetVectorFile);
-            System.out.println("Number of Neighbors: " + k);
-
-            if (useLSH) {
-                System.out.println("Using LSH-Forest for nearest neighbor search...");
-                // TODO: Implement LSH-Forest nearest neighbor search
-            } else {
-                System.out.println("Performing full heapfile scan for nearest neighbors...");
-                // TODO: Implement full heapfile scan for nearest neighbors
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        try {
-            // 🔹 Extract parameters from "Range(QA, T, D, ...)"
-
             String[] parts = queryLine.replace("NN(", "").replace(")", "").split(",");
             int queryField = Integer.parseInt(parts[0].trim());
             String targetVectorFile = parts[1].trim()+".txt";
@@ -198,32 +181,37 @@ public class Query {
             System.out.println("Target Vector File: " + targetVectorFile);
             System.out.println("Number of Neighbors: " + k);
 
+            List<Tuple> results = new ArrayList<>();
+            AttrType[] out_types = new AttrType[noOutFlds];
+            NNIndexScan nn = null;
             if (useLSH) {
                 System.out.println("Using LSH-Forest for nearest neighbor search...");
-                // TODO: Implement LSH-Forest nearest neighbor search
-            } else {
-                System.out.println("Performing full heapfile scan for nn query...");
+                try {
+                    nn = new NNIndexScan(new IndexType(IndexType.LSHF_Index), "data_heap.in", dbName+'_'+queryField+'_'+h+'_'+L, attrType, getStringSizes(attrType), attrSize, noOutFlds,  projlist, null, queryField, targetVector, k);
+                } 
+                catch (Exception e) {
+                    e.printStackTrace();
+                }              
+            } 
+            else {
+                System.out.println("Performing full heapfile scan for nearest neighbors...");
+                System.out.println("Performing full heapfile scan for range query...");
                 TupleOrder[] order = new TupleOrder[2];
                 order[0] = new TupleOrder(TupleOrder.Ascending);
                 order[1] = new TupleOrder(TupleOrder.Descending);
-                NNIndexScan nn = null;
                 try {
                     nn = new NNIndexScan(new IndexType(IndexType.None), "data_heap.in", "", attrType, getStringSizes(attrType), attrSize, noOutFlds,  projlist, null, queryField, targetVector, k);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
+            }
+            results = nn.get_all_results();
 
-                List<Tuple> results = nn.get_all_results();
-
-                for (Tuple result : results) {
-                    AttrType[] out_types = new AttrType[noOutFlds];
-                    for (int i = 0; i < noOutFlds; i++) {
-                        out_types[i] = attrType[projlist[i].offset - 1];
-                        }
-                    result.print(out_types);
-                    //System.out.println("Result: " + result.get100DVectorFld(2));
-                
-                }
+            for (Tuple result : results) {
+                for (int i = 0; i < noOutFlds; i++) {
+                    out_types[i] = attrType[projlist[i].offset - 1];
+                    }
+                result.print(out_types);
             }
         } catch (Exception e) {
             e.printStackTrace();

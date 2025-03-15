@@ -1,6 +1,6 @@
 package lshfindex;
 
-
+import java.io.IOException;
 /**
  * Base class for a index file scan
  */
@@ -12,7 +12,7 @@ public abstract class IndexFileScan
    * @return the KeyDataEntry, which contains the key and data
    */
   abstract public KeyDataEntry get_next()
-    throws ScanIteratorException;
+    throws ScanIteratorException, IteratorException, IOException;
 
   /** 
    * Delete the current record.
