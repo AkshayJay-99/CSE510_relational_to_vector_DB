@@ -23,8 +23,8 @@ public class BatchInsert {
         String dataFileName = args[2]; // Data file
         String dbName = args[3]; // Database name
         String dbpath = "/tmp/"+System.getProperty("user.name")+"."+dbName; 
-        int numPages = 1000; // Disk pages allocated
-        int bufferSize = 50; // Buffer pool size
+        int numPages = 100000; // Disk pages allocated
+        int bufferSize = 5000; // Buffer pool size
         
         try {
             // 🔹 Step 1: Initialize MiniBase
@@ -118,8 +118,8 @@ public class BatchInsert {
                     if (schema[i].attrType == AttrType.attrVector100D) {
                         Vector100Dtype vector100D = new Vector100Dtype();
                         vector100D = tuple.get100DVectorFld(i + 1);
-                        lshf[i].insert(vector100D, recordID);
-                        //System.out.println("Inserted into LSHF: Page " + recordID.pageNo.pid + ", Slot " + recordID.slotNo + " for attribute " + (i + 1+" with vector: " + vector100D));
+                        lshf[i].insert(new Vector100DKey(vector100D), recordID);
+                        System.out.println("Inserted into LSHF: Page " + recordID.pageNo.pid + ", Slot " + recordID.slotNo + " for attribute " + (i + 1+" with vector: " + vector100D));
                     }
                 }  
                 //System.out.println("Record ID: Page " + recordID.pageNo.pid + ", Slot " + recordID.slotNo);

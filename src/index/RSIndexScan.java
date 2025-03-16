@@ -101,7 +101,7 @@ public class RSIndexScan {
             while (t != null) {
                 try {
                     if (query.computeDistance(t.get100DVectorFld(fldNum), query) <= distance) {
-                        System.out.println("Found a match within distance: " + query.computeDistance(t.get100DVectorFld(fldNum), query));
+                        //System.out.println("Found a match within distance: " + query.computeDistance(t.get100DVectorFld(fldNum), query));
                         Tuple newTuple = new Tuple(t);
                         Tuple projectedTuple = new Tuple();
                         AttrType[] out_types = new AttrType[noOutFlds];

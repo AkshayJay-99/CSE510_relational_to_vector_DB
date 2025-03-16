@@ -1,6 +1,8 @@
 package lshfindex;
-import global.*;
 import java.util.Random;
+import global.*;
+import java.util.*;
+import java.util.Arrays;
 
 public class LSHFTest {
     
@@ -90,7 +92,7 @@ public class LSHFTest {
 
 
             SystemDefs sysdef = new SystemDefs("minibase.lshftest", 5000, 2000, "Clock");
-            LSHFFile lshf = new LSHFFile("myDatabase", 3, 3);
+            LSHFFile lshf = new LSHFFile("myDatabase", 5, 10);
             Random random = new Random(42);
 
             Vector100Dtype queryKey = null;
@@ -108,7 +110,9 @@ public class LSHFTest {
 
                 RID rid = new RID(); // Fake RID for testing
 
-                lshf.insert(key, rid);
+                Vector100DKey insert = new Vector100DKey(key);
+
+                lshf.insert(insert, rid);
 
                 
             }
@@ -118,6 +122,8 @@ public class LSHFTest {
             LSHFFileScan scan = new LSHFFileScan(lshf.GetIndexLayer(1));  // Scanning first layer
             scan.LSHFFileScan();
             //scan.closeScan();
+
+            lshf.LSHFFileScan();
 
             System.out.println();
             System.out.println("🔍 Finished printing structure...");

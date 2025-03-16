@@ -689,7 +689,10 @@ public class LSHFBTreeFile extends IndexFile
 
 			if (nearestNeighbors.size() >= number_of_neighbors)
 			{
-				unpinPage(leafPage.getCurPage(), true);
+				if (pinCountMap.getOrDefault(leafPage.getCurPage().pid, 0) > 0) {
+					unpinPage(leafPage.getCurPage(), true);
+				}
+				
 				return nearestNeighbors;
 			}
 				
@@ -734,6 +737,272 @@ public class LSHFBTreeFile extends IndexFile
 
 				// ✅ If enough neighbors found, stop searching
 				if (nearestNeighbors.size() >= number_of_neighbors) break;
+			}
+
+			break;  // End search once we’ve exhausted all options
+		}
+
+		// ✅ Return nearest neighbors (or process them)
+		return nearestNeighbors;
+
+		
+		//throw new InsertException(null, "Error finding correct leaf page.");
+		
+	}
+
+	public ArrayList<KeyDataEntry> RangeSearch(String bucketKey, Vector100Dtype query, double range_to_search) 
+			throws KeyTooLongException, 
+				KeyNotMatchException, 
+				LeafInsertRecException, 
+				IndexInsertRecException, 
+				ConstructPageException, 
+				UnpinPageException,
+				PinPageException, 
+				NodeNotMatchException, 
+				ConvertException,
+				DeleteRecException,
+				IndexSearchException,
+				IteratorException, 
+				LeafDeleteException, 
+				InsertException,
+				IOException 
+	{
+		
+		//System.out.println("🔍 Target Path: " + bucketKey);
+
+		// ✅ Step 1: Start from the root
+		PageId currentPageId = headerPage.get_rootId();
+		LSHFBTLeafPage leafPage = null;
+		LSHFBTIndexPage indexPage = null;
+
+		ArrayList<KeyDataEntry> nearestNeighbors = new ArrayList<>();
+		ArrayList<PageId> parentNodes = new ArrayList<>();
+		ArrayList<PageId> visitedLeaf = new ArrayList<>();
+
+		double highest_val_found = 0.0;
+		
+
+		if (currentPageId.pid == INVALID_PAGE) {
+			System.out.println("⚠️ Tree is empty, creating first leaf page.");
+
+			leafPage = new LSHFBTLeafPage(AttrType.attrVector100D);
+			PageId newRootPageId = leafPage.getCurPage();
+
+			leafPage.setNextPage(new PageId(INVALID_PAGE));
+			leafPage.setPrevPage(new PageId(INVALID_PAGE));
+
+			System.out.println("✅ Created new ROOT Leaf Node at Page ID: " + newRootPageId.pid);
+
+			unpinPage(newRootPageId, true);
+			updateHeader(newRootPageId);
+			return nearestNeighbors;
+		}
+
+		// ✅ Step 2: Traverse to the last internal node before creating a leaf
+		Page page;
+		String[] keys = bucketKey.split("_");
+		String currentPath = keys[0];
+
+		for (int i = 1; i < keys.length; i++) {
+			currentPath += "_" + keys[i];
+			StringKey pathKey = new StringKey(currentPath);
+			page = pinPage(currentPageId);
+			short nodeType = new LSHFBTSortedPage(page, headerPage.get_keyType()).getType();
+			
+			// System.out.println("➡️ TRAVERSING: " + currentPath + " | Current Page ID: " + currentPageId.pid);
+			// System.out.println("🔍 NODE TYPE at " + currentPath + " is " + nodeType);
+
+			if (nodeType == NodeType.INDEX) {
+				indexPage = new LSHFBTIndexPage(page, headerPage.get_keyType());
+				parentNodes.add(currentPageId);
+				PageId nextPageId = indexPage.getPageNoByKey(pathKey);
+
+				// ✅ **We are at the last step of traversal** - determine leaf creation vs. reference
+				if (i == keys.length - 1) {
+					if (nextPageId == null || nextPageId.pid == INVALID_PAGE) {
+						// ✅ No leaf exists, create a new one
+						//System.out.println("⚠️ No leaf found at: " + currentPath + " -> Creating new one.");
+						
+						leafPage = new LSHFBTLeafPage(AttrType.attrVector100D);
+						PageId leafPageId = leafPage.getCurPage();
+						
+						//System.out.println("✅ New Leaf Created at Page ID: " + leafPageId.pid);
+						
+						// ✅ Link the new leaf to the parent index
+						indexPage.insertKey(pathKey, leafPageId);
+
+						//System.out.println("🔎 DEBUG: Verifying Parent Index After Inserting Leaf...");
+						PageId verifyPage = indexPage.getPageNoByKey(pathKey);
+						// if (verifyPage == null || verifyPage.pid == INVALID_PAGE) {
+						// 	System.out.println("❌ ERROR: Parent index did NOT correctly store reference to new leaf!");
+						// } else {
+						// 	System.out.println("✅ Parent index correctly references new leaf at Page ID: " + verifyPage.pid);
+						// }
+
+						// 🚀 Ensure it was inserted properly
+						PageId checkPage = indexPage.getPageNoByKey(pathKey);
+						if (checkPage == null || checkPage.pid == INVALID_PAGE) {
+							//System.out.println("❌ ERROR: Failed to properly link leaf page to index!");
+							throw new InsertException(null, "Leaf was created but not linked properly.");
+						}
+
+						//System.out.println("✅ SUCCESS: Leaf correctly linked at Page ID: " + checkPage.pid);
+
+						// ✅ Reference this for insertion in Step 3
+						currentPageId = leafPageId;
+						unpinPage(currentPageId, true);
+						
+					} else {
+						// ✅ Leaf already exists - reference it for insertion
+						// System.out.println("➡️ Found node at: " + currentPath + " | Current Page ID: " + currentPageId.pid);
+						// System.out.println("🔍 NODE TYPE at " + currentPath + " is " + nodeType);
+						// System.out.println("✅ Found existing leaf at: " + currentPath);
+						
+						Page nextPage = pinPage(nextPageId);
+						short nextNodeType = new LSHFBTSortedPage(nextPage, headerPage.get_keyType()).getType();
+						
+						if (nextNodeType == NodeType.LEAF) {
+							// ✅ Correctly reference the existing leaf page
+							leafPage = new LSHFBTLeafPage(nextPage, AttrType.attrVector100D);
+							//System.out.println("✅ Confirmed existing leaf at: " + currentPath + " (Page ID: " + nextPageId.pid + ")");
+							unpinPage(nextPageId, true);
+
+						} else {
+							// 🚨 It's actually an index, so we need to create a new leaf instead
+							//System.out.println("⚠️ WARNING: Expected leaf at " + currentPath + ", but found an INDEX instead! Creating a new leaf.");
+							
+							leafPage = new LSHFBTLeafPage(AttrType.attrVector100D);
+							PageId newLeafPageId = leafPage.getCurPage();
+							
+							// ✅ Link the new leaf to the index page
+							//indexPage.insertKey(pathKey, newLeafPageId);
+							//System.out.println("🔗 Linking new leaf to parent index: " + currentPath + " (Page ID: " + newLeafPageId.pid + ")");
+							indexPage.insertKey(pathKey, newLeafPageId);
+
+							//System.out.println("🔎 DEBUG: Verifying Parent Index After Inserting Leaf...");
+							PageId verifyPage = indexPage.getPageNoByKey(pathKey);
+							// if (verifyPage == null || verifyPage.pid == INVALID_PAGE) {
+							// 	System.out.println("❌ ERROR: Parent index did NOT correctly store reference to new leaf!");
+							// } else {
+							// 	System.out.println("✅ Parent index correctly references new leaf at Page ID: " + verifyPage.pid);
+							// }
+												
+							//System.out.println("✅ SUCCESS: Leaf correctly linked at Page ID: " + verifyPage.pid);
+							currentPageId = newLeafPageId;
+							
+							// ✅ Unpin the newly created leaf so it gets written to disk
+							unpinPage(newLeafPageId, true);
+						}
+					}
+
+					unpinPage(indexPage.getCurPage(), true);
+					break;  // **Exit loop - we found or created the leaf**
+				}
+				unpinPage(currentPageId);  
+				currentPageId = nextPageId;
+				
+			}
+		}
+		//System.out.println("is leaf page null? " + leafPage.getCurPage());
+
+		// ✅ Step 3: Insert the record into the found or newly created leaf
+		while (leafPage != null) {
+			int recordCount = 0;
+			RID countRid = new RID();
+			KeyDataEntry countEntry = leafPage.getFirst(countRid);
+			while (countEntry != null) {
+				recordCount++;
+				countEntry = leafPage.getNext(countRid);
+			}
+			//System.out.println("📊 DEBUG: Total Records in Leaf Page " + leafPage.getCurPage().pid + " = " + recordCount);
+
+			// ✅ Process and store leaf entries
+			pinPage(leafPage.getCurPage());
+			RID rid = new RID();
+			KeyDataEntry entry = leafPage.getFirst(rid);
+			while (entry != null) {
+				//System.out.println("✅ Leaf Record: " + entry.key);
+				//((Vector100DKey) entry.key).getKey()
+				double distance = query.computeDistance(query, ((Vector100DKey) entry.key).getKey());
+
+				//System.out.println("distace to query within range search: " + distance);
+
+				if(distance > highest_val_found)
+					highest_val_found = distance;
+
+				nearestNeighbors.add(entry);  // ✅ Add to nearest neighbors list
+				//if (nearestNeighbors.size() >= number_of_neighbors) break; // Stop when we have enough
+				entry = leafPage.getNext(rid);
+			}
+			unpinPage(leafPage.getCurPage(), true);
+
+			// ✅ Check for right sibling before moving up
+			PageId rightSiblingId = leafPage.getNextPage();
+
+			if (rightSiblingId.pid != INVALID_PAGE) {
+				//System.out.println("➡️ Moving to existing right sibling: Page " + rightSiblingId.pid);
+
+				if (pinCountMap.getOrDefault(leafPage.getCurPage().pid, 0) > 0) {
+					unpinPage(leafPage.getCurPage(), false);
+				}
+
+				leafPage = new LSHFBTLeafPage(pinPage(rightSiblingId), AttrType.attrVector100D);
+				continue;
+			}
+
+			if (highest_val_found >= range_to_search)
+			{
+				if (pinCountMap.getOrDefault(leafPage.getCurPage().pid, 0) > 0) {
+					unpinPage(leafPage.getCurPage(), true);
+				}
+				
+				return nearestNeighbors;
+			}
+				
+			if (highest_val_found >= range_to_search)
+				return nearestNeighbors;
+
+			//System.out.println("Checking parent nodes");
+
+			// ✅ Step 3: If No Right Sibling, Move Up to Parent and Search Adjacent Buckets
+			//System.out.println("🔼 No right sibling. Moving up to parent index...");
+
+			while (!parentNodes.isEmpty()) {
+				PageId parentIndexId = parentNodes.remove(parentNodes.size() - 1); // Get last visited parent
+				LSHFBTIndexPage parentIndexPage = new LSHFBTIndexPage(pinPage(parentIndexId), headerPage.get_keyType());
+
+				RID siblingRid = new RID();
+				KeyDataEntry siblingEntry = parentIndexPage.getFirst(siblingRid);
+
+				while (siblingEntry != null) {
+					PageId siblingPageId = ((IndexData) siblingEntry.data).getData();
+
+					if (!visitedLeaf.contains(siblingPageId)) { // ✅ Check unvisited siblings
+						//System.out.println("🔄 Checking unvisited sibling at Page: " + siblingPageId.pid);
+
+						LSHFBTSortedPage siblingPage = new LSHFBTSortedPage(pinPage(siblingPageId), headerPage.get_keyType());
+
+						if (siblingPage.getType() == NodeType.LEAF) {
+							LSHFBTLeafPage siblingLeafPage = new LSHFBTLeafPage(siblingPage, AttrType.attrVector100D);
+							RID tempRid = new RID();
+							KeyDataEntry tempEntry = siblingLeafPage.getFirst(tempRid);
+
+							while (tempEntry != null) {
+								//System.out.println("✅ Extra Leaf Record: " + tempEntry.key);
+								nearestNeighbors.add(tempEntry);  // ✅ Add to nearest neighbors list
+								visitedLeaf.add(siblingPageId);
+								if (highest_val_found >= range_to_search) break;  // Stop when enough records found
+								tempEntry = siblingLeafPage.getNext(tempRid);
+							}
+							unpinPage(siblingPageId);
+						}
+					}
+					siblingEntry = parentIndexPage.getNext(siblingRid);
+				}
+				unpinPage(parentIndexId);
+
+				// ✅ If enough neighbors found, stop searching
+				if (highest_val_found >= range_to_search) break;
 			}
 
 			break;  // End search once we’ve exhausted all options
