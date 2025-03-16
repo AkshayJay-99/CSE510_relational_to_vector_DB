@@ -13,11 +13,15 @@ import java.lang.Math;
 import java.util.PriorityQueue;
 import java.util.ArrayList;
 //import RIDDistancePair;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Arrays;
+import java.util.AbstractMap;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.stream.Collectors;
 
-public class LSHFFile// extends IndexFile
+public class LSHFFile extends IndexFile
 {
     private int layers;
     private int hashes;
@@ -26,7 +30,7 @@ public class LSHFFile// extends IndexFile
     private Heapfile heapFile;
     private BufMgr bufferManager;
 
-    private int width = 200;
+    private int width = 150;
     private Random random = new Random();
 
     private double[][][] projections;
@@ -74,6 +78,71 @@ public class LSHFFile// extends IndexFile
         }
     }
 
+    public void saveHashFunctions() throws Exception 
+    {
+        Heapfile hashFile = new Heapfile("hash_functions");
+        Tuple tuple = new Tuple();
+
+        AttrType[] attrTypes = new AttrType[]{ 
+        new AttrType(AttrType.attrInteger), // Layer ID
+        new AttrType(AttrType.attrInteger), // Hash ID
+        new AttrType(AttrType.attrString),   // Projection Vector (100D)
+        new AttrType(AttrType.attrInteger)  // b_value (int)
+        };
+
+        short[] strSizes = new short[]{800};
+        tuple.setHdr((short) 4, attrTypes, strSizes);
+
+        for (int i = 0; i < layers; i++) {
+            for (int j = 0; j < hashes; j++) {
+                tuple.setIntFld(1, i);  // Layer ID
+                tuple.setIntFld(2, j);  // Hash ID
+
+                // Convert projection vector to byte array
+                String projString = Arrays.stream(projections[i][j]).mapToObj(Double::toString).collect(Collectors.joining(","));
+                tuple.setStrFld(3, projString);
+
+                tuple.setIntFld(4, b_values[i][j]); // Store b_value
+
+                hashFile.insertRecord(tuple.getTupleByteArray());
+            }
+        }
+    }
+
+    public void loadHashFunctions() throws Exception {
+        Heapfile hashFile = new Heapfile("hash_functions");
+        Scan scan = new Scan(hashFile);
+        Tuple tuple;
+        RID rid = new RID();
+
+        projections = new double[layers][hashes][100];
+        b_values = new int[layers][hashes];
+
+        while ((tuple = scan.getNext(rid)) != null) {
+            tuple.setHdr((short) 4, 
+                new AttrType[]{
+                    new AttrType(AttrType.attrInteger), 
+                    new AttrType(AttrType.attrInteger), 
+                    new AttrType(AttrType.attrString), 
+                    new AttrType(AttrType.attrInteger)
+                }, 
+                new short[]{800}); // Same size assumption
+
+            int layer = tuple.getIntFld(1);
+            int hashId = tuple.getIntFld(2);
+
+            // Retrieve projection vector from stored string
+            String projString = tuple.getStrFld(3);
+            double[] projArray = Arrays.stream(projString.split(","))
+                                    .mapToDouble(Double::parseDouble)
+                                    .toArray();
+
+            projections[layer][hashId] = projArray;
+            b_values[layer][hashId] = tuple.getIntFld(4);
+        }
+
+    }
+
     public double[] convertShortToDouble(short[] inputArray)
     {
         double[] convertedArray = new double[inputArray.length];
@@ -82,10 +151,51 @@ public class LSHFFile// extends IndexFile
         return convertedArray;
     }
 
+    public void close() {
+        try {
+            //System.out.println("🔍 Checking file entries BEFORE closing...");
+            for (int i = 0; i < btreeIndex.length; i++) {
+                if (btreeIndex[i] != null) {
+                    String indexName = "BTree_layer" + i;
+                    PageId pageId = SystemDefs.JavabaseDB.get_file_entry(indexName);
+                    
+                    // if (pageId == null) {
+                    //     System.out.println("❌ Index file entry MISSING before closing: " + indexName);
+                    // } else {
+                    //     System.out.println("✅ Found existing index file entry: " + indexName + " (PageId: " + pageId.pid + ")");
+                    // }
 
-    public void insert(Vector100Dtype key, RID rid) throws  Exception, SpaceNotAvailableException, InvalidSlotNumberException, HFDiskMgrException, DiskMgrException, BufMgrException, PageNotReadException, PageUnpinnedException, PagePinnedException, InvalidFrameNumberException, HashEntryNotFoundException, IOException, InvalidTypeException, InvalidTupleSizeException, FieldNumberOutOfBoundException, BufferPoolExceededException, HFException, HashOperationException, ReplacerException, HFBufMgrException
+                    //System.out.println("Attempting to close index: " + i);
+                    btreeIndex[i].close();
+                    //System.out.println("Successfully closed index: " + i);
+                }
+            }
+
+            // ✅ Flush all pages to disk to ensure persistence
+            //System.out.println("✅ Flushing all pages to disk...");
+            SystemDefs.JavabaseBM.flushAllPages();
+           // System.out.println("✅ All pages flushed to disk.");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void verifyIndexFiles() {
+        for (int i = 0; i < btreeIndex.length; i++) {
+            String indexFile = "BTree_Layer" + i;
+            File file = new File(indexFile);
+            if (file.exists()) {
+                System.out.println("✅ Index file exists: " + indexFile);
+            } else {
+                System.out.println("❌ Index file MISSING: " + indexFile);
+            }
+        }
+    }
+
+
+    public void insert(Vector100DKey key, RID rid) throws  Exception, SpaceNotAvailableException, InvalidSlotNumberException, HFDiskMgrException, DiskMgrException, BufMgrException, PageNotReadException, PageUnpinnedException, PagePinnedException, InvalidFrameNumberException, HashEntryNotFoundException, IOException, InvalidTypeException, InvalidTupleSizeException, FieldNumberOutOfBoundException, BufferPoolExceededException, HFException, HashOperationException, ReplacerException, HFBufMgrException
     {
-        double[] vector = convertShortToDouble(key.getValues());
+        double[] vector = convertShortToDouble(key.getKey().getValues());
         //System.out.println("We made it to the insert method");
         //System.out.flush();
         for(int i = 0; i < layers; i++)
@@ -97,14 +207,56 @@ public class LSHFFile// extends IndexFile
 
             String bucketKey = "layer" + i;
 
-            btreeIndex[layer] = new LSHFBTreeFile("BTree_layer" + layer, AttrType.attrString, 250, 1);
+            //btreeIndex[layer] = new LSHFBTreeFile("BTree_layer" + layer, AttrType.attrString, 250, 1);
+            // if (btreeIndex[layer] == null) {
+            //     //System.out.println("✅ Creating new BTree index for layer " + layer);
+            //     btreeIndex[layer] = new LSHFBTreeFile("BTree_layer" + layer, AttrType.attrString, 250, 1);
+            // }
+            
+
+
+            String indexName = "BTree_layer" + layer;
+
+            // PageId pageId = get_file_entry(indexFile);
+            // if (pageId == null) {
+            //     System.out.println("❌ Index file entry MISSING: " + indexFile);
+            // } else {
+            //     System.out.println("✅ Index file entry FOUND: " + indexFile + " -> PageId: " + pageId);
+            // }
+
+
+            if (btreeIndex[layer] == null) {
+
+                 //System.out.println("⚠️ No existing BTree index found. Creating new one for " + indexName);
+
+                PageId pageId = SystemDefs.JavabaseDB.get_file_entry(indexName);  // ✅ Ensure this runs first
+
+                if (pageId == null) {
+                    //System.out.println("❌ No file entry found for: " + indexName);
+                    //System.out.println("📌 Creating new BTree index for: " + indexName);
+                    btreeIndex[layer] = new LSHFBTreeFile(indexName, AttrType.attrString, 250, 1);
+                } else {
+                    //System.out.println("✅ Found existing file entry for: " + indexName + " -> PageId: " + pageId.pid);
+                    btreeIndex[layer] = new LSHFBTreeFile(indexName);
+                }
+
+                // try {
+                //     // Try to open an existing index first
+                //     btreeIndex[layer] = new LSHFBTreeFile(indexName);
+                //     System.out.println("✅ Loaded existing BTree index for layer " + layer);
+                // } catch (Exception e) {
+                //     // If it doesn't exist, create a new one
+                //     System.out.println("⚠️ No existing BTree index found. Creating new one for layer " + layer);
+                //     btreeIndex[layer] = new LSHFBTreeFile(indexName, AttrType.attrString, 250, 1);
+                // }
+            }
             
 
             for(int j = 0; j < hashes; j++)
             {
                 //int layer = i;
                 int hashVal = hash_function(projections[i][j], vector, b_values[i][j], width);
-                hash_list[layer] = hashVal;
+                hash_list[j] = hashVal;
                 bucketKey += ("_" + hashVal);
                 //System.out.println("We are hashing into the " + hashVal + " In layer: " + i);
                 //storeInHeapFile(hashVal, layer, key, rid);
@@ -121,54 +273,69 @@ public class LSHFFile// extends IndexFile
 
             //System.out.println("new bucket key: " + bucketKey);
 
-            Vector100DKey vectorKey = new Vector100DKey(key);
+            //Vector100DKey vectorKey = new Vector100DKey(key);
+
             //System.out.println("📌 Inserting Leaf Node: " + vectorKey + " | RID -> Page: " + rid.pageNo.pid + ", Slot: " + rid.slotNo);
-            btreeIndex[layer].insertLeaf(vectorKey, rid, bucketKey);
-            
+
+            // System.out.println();
+            // System.out.println();
+            // System.out.println("Inserting leaf now");
+            btreeIndex[layer].insertLeaf(key, rid, bucketKey);
+            // System.out.println("Done inserting leaf");
+            // System.out.println();
+            // System.out.println();
+
         }
 
         //printBTreeStructure(0);
        
     }
 
-
-
-    public void printBTreeStructure(int layer) {
-        if (btreeIndex[layer] == null) {
-            System.out.println("⚠️ BTree for layer " + layer + " is not initialized.");
-            return;
-        }
-
-        try {
-            System.out.println("\n🔍 **BTree Structure for Layer " + layer + "**");
-
-            LSHFBTFileScan scan = btreeIndex[layer].new_scan(null, null);
-            KeyDataEntry entry;
-
-            while ((entry = scan.get_next()) != null) {
-                if (entry.key instanceof StringKey) {
-                    String key = ((StringKey) entry.key).getKey();
-
-                    if (entry.data instanceof LeafData) {
-                        RID rid = ((LeafData) entry.data).getData();
-                        System.out.println("📌 Leaf Node | Key: " + key + " | RID -> Page: " + rid.pageNo.pid + ", Slot: " + rid.slotNo);
-                    } 
-                    else if (entry.data instanceof IndexData) {
-                        PageId pageId = ((IndexData) entry.data).getData();
-                        System.out.println("🗂️ Internal Node | Key: " + key + " | Points to Page: " + pageId.pid);
-                    } 
-                    else {
-                        System.out.println("⚠️ Unknown Node Type for Key: " + key + " | Data: " + entry.data.getClass().getSimpleName());
-                    }
-                }
-            }
-
-            scan.DestroyLSHFBTreeFileScan();
-            System.out.println("✅ End of BTree structure for layer " + layer + "\n");
-        } catch (Exception e) {
-            System.out.println("❌ Error printing BTree structure for layer " + layer + ": " + e.getMessage());
-        }
+    public LSHFBTreeFile GetIndexLayer(int layer)
+    {
+        return btreeIndex[layer];
     }
+
+
+
+
+    // public void printBTreeStructure(int layer) {
+    //     if (btreeIndex[layer] == null) {
+    //         System.out.println("⚠️ BTree for layer " + layer + " is not initialized.");
+    //         return;
+    //     }
+
+    //     try {
+    //         System.out.println("\n🔍 **BTree Structure for Layer " + layer + "**");
+
+    //         // Start scanning from the beginning
+    //         LSHFBTFileScan scan = btreeIndex[layer].new_scan(null, null);
+    //         KeyDataEntry entry;
+
+    //         while ((entry = scan.get_next()) != null) {
+    //             if (entry.key instanceof StringKey) {
+    //                 String key = ((StringKey) entry.key).getKey();
+
+    //                 if (entry.data instanceof LeafData) {
+    //                     RID rid = ((LeafData) entry.data).getData();
+    //                     System.out.println("📌 Leaf Node | Key: " + key + " | RID -> Page: " + rid.pageNo.pid + ", Slot: " + rid.slotNo);
+    //                 } 
+    //                 else if (entry.data instanceof IndexData) {
+    //                     PageId pageId = ((IndexData) entry.data).getData();
+    //                     System.out.println("🗂️ Internal Node | Key: " + key + " | Points to Page: " + pageId.pid);
+    //                 } 
+    //                 else {
+    //                     System.out.println("⚠️ Unknown Node Type for Key: " + key + " | Data: " + entry.data.getClass().getSimpleName());
+    //                 }
+    //             }
+    //         }
+
+    //         scan.DestroyLSHFBTreeFileScan();
+    //         System.out.println("✅ End of BTree structure for layer " + layer + "\n");
+    //     } catch (Exception e) {
+    //         System.out.println("❌ Error printing BTree structure for layer " + layer + ": " + e.getMessage());
+    //     }
+    // }
 
 
 
@@ -333,7 +500,7 @@ public class LSHFFile// extends IndexFile
         return product;
     }
 
-    public LSHFFile(String fileName, int h, int L) throws ConstructPageException
+    public LSHFFile(String fileName, int h, int L) throws Exception, ConstructPageException, IOException, GetFileEntryException, FileIOException, AddFileEntryException, PinPageException, InvalidPageNumberException, ReplacerException, ReplacerException, DiskMgrException, PageUnpinnedException, HashEntryNotFoundException, InvalidFrameNumberException
     {
         this.hashes = h;
         this.layers = L;
@@ -343,9 +510,33 @@ public class LSHFFile// extends IndexFile
         headerPage.setNumLayers(L);
         headerPage.setNumHashes(h);
 
-         btreeIndex = new LSHFBTreeFile[L];
+        btreeIndex = new LSHFBTreeFile[L];
 
-        initalizeHashFunction();
+        for (int i = 0; i < L; i++) {
+            String indexName = "BTree_layer" + i;
+            PageId pageId = SystemDefs.JavabaseDB.get_file_entry(indexName);
+
+            if (pageId != null) {
+                // ✅ Reload existing index
+                //System.out.println("✅ Loading existing B+Tree index: " + indexName + " (PageId: " + pageId.pid + ")");
+                this.btreeIndex[i] = new LSHFBTreeFile(indexName);
+            } else {
+                // ❌ No existing index found, create a new one
+                //System.out.println("⚠️ No existing BTree index found. Creating new one for " + indexName);
+                this.btreeIndex[i] = new LSHFBTreeFile(indexName, AttrType.attrString, 250, 1);
+            }
+        }
+
+        //initalizeHashFunction();
+        try {
+            //System.out.println(" Hash functions found in HeapFile. Retrieving");
+            loadHashFunctions();
+        } catch (Exception e) {
+            //System.out.println(" Hash functions not found in HeapFile. Generating new ones...");
+            initalizeHashFunction();
+            saveHashFunctions();
+        }
+
         // System.out.println("We have initalized the hash funciton");
         // System.out.flush();
 
@@ -437,106 +628,270 @@ public class LSHFFile// extends IndexFile
         return results;
     }
 
-    public ArrayList<RID> NN_Search(Vector100Dtype key, int k) throws SpaceNotAvailableException, InvalidSlotNumberException, HFDiskMgrException, DiskMgrException, BufMgrException, PageNotReadException, PageUnpinnedException, PagePinnedException, InvalidFrameNumberException, HashEntryNotFoundException, IOException, InvalidTypeException, FieldNumberOutOfBoundException, InvalidTupleSizeException, BufferPoolExceededException, HFException, HashOperationException, ReplacerException, HFBufMgrException
+    public KeyDataEntry[] NN_Search(Vector100Dtype key, int k) throws ScanIteratorException, InsertException, LeafDeleteException, IteratorException, IndexSearchException, DeleteRecException, ConvertException, NodeNotMatchException, PinPageException, UnpinPageException, ConstructPageException, IndexInsertRecException, LeafInsertRecException, KeyNotMatchException, KeyTooLongException, SpaceNotAvailableException, InvalidSlotNumberException, HFDiskMgrException, DiskMgrException, BufMgrException, PageNotReadException, PageUnpinnedException, PagePinnedException, InvalidFrameNumberException, HashEntryNotFoundException, IOException, InvalidTypeException, FieldNumberOutOfBoundException, InvalidTupleSizeException, BufferPoolExceededException, HFException, HashOperationException, ReplacerException, HFBufMgrException
     {
-        ArrayList<Integer> queryHashes = new ArrayList<>();
-        ArrayList<Integer> queryLayers = new ArrayList<>();
-        ArrayList<RIDDistancePair> results = new ArrayList<>();
-        PriorityQueue<RIDDistancePair> maxHeap = new PriorityQueue<>((a,b) -> Double.compare(b.distance, a.distance));
-        ArrayList<RID> nearestNeightbors = new ArrayList<>();
+
+        String[] bucketKeys = new String[layers]; 
+
+        HashSet<String> uniqueVectors = new HashSet<>();
 
         for(int i = 0; i < layers; i++)
         {
+            String bucketKey = "layer" + i;
             for(int j = 0; j < hashes; j++)
             {
                 int hash_value = hash_function(projections[i][j], convertShortToDouble(key.getValues()), b_values[i][j], width);
-                queryHashes.add(hash_value);
-                queryLayers.add(i);
+                bucketKey += ("_" + hash_value);
             }
+            bucketKeys[i] = bucketKey;
         }
+        
+        ArrayList<AbstractMap.SimpleEntry<KeyDataEntry, Double>> distance_to_query = new ArrayList<>();
+        
 
-        for(int i = 0; i < queryHashes.size(); i++)
+        for(int i = 0; i < layers; i++)
         {
-            int queryHash = queryHashes.get(i);
-            int queryLayer = queryLayers.get(i);
-            int bucketKey = (queryLayer * 100000) + queryHash; 
-            if(!headerPage.getHashBucketTable().containsKey(bucketKey))
-                continue;
-            
-            PageId pageId = headerPage.getHashBucketTable().get(bucketKey);
-            // System.out.flush();
-            // System.out.println("Scanning Bucket File: bucket_" + pageId.pid);
-            // System.out.flush();
-            Heapfile bucketFile = new Heapfile("bucket_" + pageId.pid + "_" + queryLayer);
-            Scan heapScan = bucketFile.openScan();
-           
-            Tuple t;
-            RID curRid = new RID();
-            
-
-            // // Print tuple contents
-            // System.out.println("Retrieved Tuple Schema:");
-            // System.out.println("Vector Field (1): " + t.get100DVectorFld(1));  // Check if vector field is valid
-            // System.out.println("RID Page ID (2): " + t.getIntFld(2));
-            // System.out.println("RID Slot Number (3): " + t.getIntFld(3));
-
-            while(true)
+            ArrayList<KeyDataEntry> nearestNeighbors = new ArrayList<>();
+            //System.out.println("Printing bucket key: " + bucketKeys[i] + " within layer: " + i);
+            if(k != 0)
+                nearestNeighbors = btreeIndex[i].NNSearch(bucketKeys[i], k);
+            else
             {
-                //RID curRid = new RID();
-                t = heapScan.getNext(curRid);
-                if(t == null)
-                {
-                    //System.out.println("ERROR: heapScan.getNext() returned NULL. Ending scan.");
-                    break;
-                }
+                LSHFFileScan scan = new LSHFFileScan(btreeIndex[i]);
+                nearestNeighbors = scan.LSHFFileScan();
+            }
+            
+            
 
-                if (curRid == null || curRid.pageNo.pid < 0 || curRid.slotNo < 0) {  
-                    System.out.println("ERROR: Retrieved invalid RID -> Page: " + (curRid == null ? "NULL" : curRid.pageNo.pid) + ", Slot: " + (curRid == null ? "NULL" : curRid.slotNo) + ". Skipping...");
-                    continue;
-                }
+            for(int j = 0; j < nearestNeighbors.size(); j++)
+            {
+                KeyDataEntry entry = nearestNeighbors.get(j);
 
-                AttrType[] attrTypes = new AttrType[]{
-                    new AttrType(AttrType.attrVector100D),
-                    new AttrType(AttrType.attrInteger),
-                    new AttrType(AttrType.attrInteger)
-                };
 
-                short[] strSize = new short[0];
-                t.setHdr((short) 3, attrTypes, strSize);
+                Vector100Dtype contender = ((Vector100DKey) entry.key).getKey();
 
-                // System.out.println("Retrieved Tuple -> Page: " + curRid.pageNo.pid + ", Slot: " + curRid.slotNo);
-                // System.out.println("Stored Vector: " + t.get100DVectorFld(1)); 
-                // System.out.println("Stored RID Page ID: " + t.getIntFld(2));
-                // System.out.println("Stored RID Slot: " + t.getIntFld(3));
+                double distance = key.computeDistance(key, contender);
 
-                Vector100Dtype stored_vector = t.get100DVectorFld(1);
-                //System.out.println(stored_vector);
+                //System.out.println("Printing vector: " + distance);
 
-                RID storedRid = new RID(new PageId(t.getIntFld(2)), t.getIntFld(3));
-                //System.out.println("Fetching RID: Page " + storedRid.pageNo.pid + ", Slot " + storedRid.slotNo);
-                if (storedRid.slotNo < 0 || storedRid.pageNo.pid < 0) {
-                    System.out.println("ERROR: Invalid slot number detected.");
-                    continue;  // Skip invalid RIDs
-                }
+                String vectorKey = Arrays.toString(contender.getValues());
 
-                double distance_to_query = stored_vector.computeDistance(key, stored_vector);
-                if (maxHeap.size() < k) {
-                    maxHeap.add(new RIDDistancePair(storedRid, distance_to_query));
-                } else if (distance_to_query < maxHeap.peek().distance) {
-                    maxHeap.poll(); 
-                    maxHeap.add(new RIDDistancePair(storedRid, distance_to_query));
+                
+                if (!uniqueVectors.contains(vectorKey)) {
+                    uniqueVectors.add(vectorKey);
+                    distance_to_query.add(new AbstractMap.SimpleEntry<>(entry, distance));
                 }
                 
             }
-            heapScan.closescan();
 
         }
 
-        while (!maxHeap.isEmpty())
+                // Sort
+        Collections.sort(distance_to_query, Comparator.comparing(AbstractMap.SimpleEntry::getValue));
+        
+        if(k != 0)
         {
-            nearestNeightbors.add(maxHeap.poll().rid);
+            ArrayList<AbstractMap.SimpleEntry<KeyDataEntry, Double>> topKNeighbors = new ArrayList<>(distance_to_query.subList(0, Math.min(k, distance_to_query.size())));
+            KeyDataEntry[] returnValues  = new KeyDataEntry[k];
+            int i = 0;
+            for (AbstractMap.SimpleEntry<KeyDataEntry, Double> pair : topKNeighbors) {
+                KeyDataEntry nearestEntry = pair.getKey();
+                double distance = pair.getValue();
+                
+                RID rid = null;
+                rid = ((LeafData) nearestEntry.data).getData();
+                //rid.pageNo.pid + ", Slot: " + rid.slotNo
+                System.out.println("NN: " + nearestEntry.key +  " RID.pid: " + rid.pageNo.pid + " RID.slotNum: " + rid.slotNo + " | Distance: " + distance);
+                returnValues[i] = nearestEntry;
+                i++;
+
+            }
+
+            return returnValues; 
         }
-        return nearestNeightbors; 
+        else
+        {
+
+            //System.out.println("we should be rteturning this many values: " + distance_to_query.size());
+            //ArrayList<AbstractMap.SimpleEntry<KeyDataEntry, Double>> topKNeighbors = new ArrayList<>(distance_to_query.subList(0, Math.min(k, distance_to_query.size())));
+            KeyDataEntry[] returnValues  = new KeyDataEntry[distance_to_query.size()];
+            int i = 0;
+            for (AbstractMap.SimpleEntry<KeyDataEntry, Double> pair : distance_to_query) {
+                KeyDataEntry nearestEntry = pair.getKey();
+                double distance = pair.getValue();
+                
+                RID rid = null;
+                rid = ((LeafData) nearestEntry.data).getData();
+                //rid.pageNo.pid + ", Slot: " + rid.slotNo
+                System.out.println("NN: " + nearestEntry.key +  " RID.pid: " + rid.pageNo.pid + " RID.slotNum: " + rid.slotNo + " | Distance: " + distance);
+                returnValues[i] = nearestEntry;
+                i++;
+
+            }
+
+            return returnValues; 
+        }
+
+
+        
+    }
+
+    public KeyDataEntry[] Range_Search(Vector100Dtype key, double range) throws ScanIteratorException, InsertException, LeafDeleteException, IteratorException, IndexSearchException, DeleteRecException, ConvertException, NodeNotMatchException, PinPageException, UnpinPageException, ConstructPageException, IndexInsertRecException, LeafInsertRecException, KeyNotMatchException, KeyTooLongException, SpaceNotAvailableException, InvalidSlotNumberException, HFDiskMgrException, DiskMgrException, BufMgrException, PageNotReadException, PageUnpinnedException, PagePinnedException, InvalidFrameNumberException, HashEntryNotFoundException, IOException, InvalidTypeException, FieldNumberOutOfBoundException, InvalidTupleSizeException, BufferPoolExceededException, HFException, HashOperationException, ReplacerException, HFBufMgrException
+    {
+
+        String[] bucketKeys = new String[layers]; 
+
+        HashSet<String> uniqueVectors = new HashSet<>();
+
+        for(int i = 0; i < layers; i++)
+        {
+            String bucketKey = "layer" + i;
+            for(int j = 0; j < hashes; j++)
+            {
+                int hash_value = hash_function(projections[i][j], convertShortToDouble(key.getValues()), b_values[i][j], width);
+                bucketKey += ("_" + hash_value);
+            }
+            bucketKeys[i] = bucketKey;
+        }
+        
+        ArrayList<AbstractMap.SimpleEntry<KeyDataEntry, Double>> distance_to_query = new ArrayList<>();
+
+        for(int i = 0; i < layers; i++)
+        {
+            //System.out.println("Printing bucket key: " + bucketKeys[i] + " within layer: " + i);
+            ArrayList<KeyDataEntry> nearestNeighbors = btreeIndex[i].RangeSearch(bucketKeys[i], key, range);
+            
+            
+
+            for(int j = 0; j < nearestNeighbors.size(); j++)
+            {
+                KeyDataEntry entry = nearestNeighbors.get(j);
+
+
+                Vector100Dtype contender = ((Vector100DKey) entry.key).getKey();
+
+                double distance = key.computeDistance(key, contender);
+
+                //System.out.println("Printing vector: " + distance);
+
+                String vectorKey = Arrays.toString(contender.getValues());
+
+                
+                if (!uniqueVectors.contains(vectorKey) && distance < range) {
+                    uniqueVectors.add(vectorKey);
+                    distance_to_query.add(new AbstractMap.SimpleEntry<>(entry, distance));
+                }
+                
+            }
+
+        }
+
+                // Sort
+        Collections.sort(distance_to_query, Comparator.comparing(AbstractMap.SimpleEntry::getValue));
+        //ArrayList<AbstractMap.SimpleEntry<KeyDataEntry, Double>> topKNeighbors = new ArrayList<>(distance_to_query.subList(0, Math.min(k, distance_to_query.size())));
+
+        KeyDataEntry[] returnValues  = new KeyDataEntry[distance_to_query.size()];
+        int i = 0;
+        for (AbstractMap.SimpleEntry<KeyDataEntry, Double> pair : distance_to_query) {
+            KeyDataEntry nearestEntry = pair.getKey();
+            double distance = pair.getValue();
+            
+            RID rid = null;
+            rid = ((LeafData) nearestEntry.data).getData();
+            //rid.pageNo.pid + ", Slot: " + rid.slotNo
+            System.out.println("✅ NN: " + nearestEntry.key +  " RID.pid: " + rid.pageNo.pid + " RID.slotNum: " + rid.slotNo + " | Distance: " + distance);
+            returnValues[i] = nearestEntry;
+            i++;
+
+        }
+
+        return returnValues; 
+    }
+
+
+    public KeyDataEntry[] LSHFFileScan() throws ScanIteratorException, InsertException, LeafDeleteException, IteratorException, IndexSearchException, DeleteRecException, ConvertException, NodeNotMatchException, PinPageException, UnpinPageException, ConstructPageException, IndexInsertRecException, LeafInsertRecException, KeyNotMatchException, KeyTooLongException, SpaceNotAvailableException, InvalidSlotNumberException, HFDiskMgrException, DiskMgrException, BufMgrException, PageNotReadException, PageUnpinnedException, PagePinnedException, InvalidFrameNumberException, HashEntryNotFoundException, IOException, InvalidTypeException, FieldNumberOutOfBoundException, InvalidTupleSizeException, BufferPoolExceededException, HFException, HashOperationException, ReplacerException, HFBufMgrException
+    {
+
+        HashSet<String> uniqueVectors = new HashSet<>();
+
+
+       
+        ArrayList<KeyDataEntry> finalValues = new ArrayList<>();
+
+        for(int i = 0; i < layers; i++)
+        {
+            //System.out.println("Printing bucket key: " + bucketKeys[i] + " within layer: " + i);
+            LSHFFileScan scan = new LSHFFileScan(btreeIndex[i]);
+            ArrayList<KeyDataEntry> nearestNeighbors = scan.LSHFFileScan();
+            
+           
+            finalValues.addAll(nearestNeighbors);
+
+            
+
+            //System.out.println("size of nearestNeighbors: " + nearestNeighbors.size());
+
+            // for(int j = 0; j < nearestNeighbors.size(); j++)
+            // {
+                
+
+
+            //     //Vector100Dtype contender = ((Vector100DKey) entry.key).getKey();
+
+            //     //String vectorKey = Arrays.toString(contender.getValues());
+
+                
+            //     // if (!uniqueVectors.contains(vectorKey)) {
+            //     //     uniqueVectors.add(vectorKey);
+            //     //     distance_to_query.add(new AbstractMap.SimpleEntry<>(entry, distance));
+            //     // }
+                
+            // }
+
+        }
+        
+        //Collections.sort(distance_to_query, Comparator.comparing(AbstractMap.SimpleEntry::getValue));
+
+        KeyDataEntry[] returnValues  = new KeyDataEntry[finalValues.size()];
+
+        for(int i = 0; i < finalValues.size(); i++)
+        {
+            returnValues[i] = finalValues.get(i);
+        }
+
+        
+
+        return returnValues; 
+    }
+
+    @Override
+    public void insert(final KeyClass data, final RID rid)
+    {
+        
+        throw new UnsupportedOperationException("Delete operation is not yet implemented in LSHFFile.");
+    }
+
+    @Override
+    public boolean Delete(final KeyClass data, final RID rid)  
+    throws  DeleteFashionException, 
+	    LeafRedistributeException,
+	    RedistributeException,
+	    InsertRecException,
+	    KeyNotMatchException, 
+	    UnpinPageException, 
+	    IndexInsertRecException,
+	    FreePageException, 
+	    RecordNotFoundException, 
+	    PinPageException,
+	    IndexFullDeleteException, 
+	    LeafDeleteException,
+	    IteratorException, 
+	    ConstructPageException, 
+	    DeleteRecException,
+	    IndexSearchException, 
+	    IOException {
+        
+        throw new UnsupportedOperationException("Delete operation is not yet implemented in LSHFFile.");
     }
 
     public static void main(String[] args) {

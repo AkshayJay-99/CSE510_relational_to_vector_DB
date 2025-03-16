@@ -312,23 +312,14 @@ public class HFPage extends Page
  * @throws IOException If an I/O error occurs.
  */
 public void set100DVectorValue(Vector100Dtype value, int position, byte[] data) throws IOException {
-  int vectorSize = Vector100Dtype.VECTOR_SIZE * 2; // 200 bytes
-  if (position + vectorSize > data.length) {
+  if (position + (Vector100Dtype.VECTOR_SIZE * 2) > data.length) {
       throw new IOException("Position out of bounds while writing Vector100Dtype.");
   }
-  
-  // Ensure enough space in slot
-  int availableSpace = available_space();
-  if (vectorSize > availableSpace) {
-      throw new IOException("Not enough space in the page to store Vector100Dtype.");
-  }
-
   short[] values = value.getValues();
   for (int i = 0; i < Vector100Dtype.VECTOR_SIZE; i++) {
       Convert.setShortValue(values[i], position + (i * 2), data); // Each short is 2 bytes
   }
 }
-
 
 
   
@@ -358,8 +349,6 @@ public void set100DVectorValue(Vector100Dtype value, int position, byte[] data) 
       return val;
     }
 
-  public static final int VECTOR_100D_SIZE = Vector100Dtype.VECTOR_SIZE * 2;  // 200 bytes
-
  /**
  * Reads a 100D vector from the given byte array at the specified position.
  * @param position The byte position where the vector starts.
@@ -368,24 +357,15 @@ public void set100DVectorValue(Vector100Dtype value, int position, byte[] data) 
  * @throws IOException If an I/O error occurs.
  */
 public Vector100Dtype get100DVectorValue(int position, byte[] data) throws IOException {
-  if (position + VECTOR_100D_SIZE > data.length) {
-    throw new IOException("Position out of bounds while reading Vector100Dtype.");
-}
-
-
-  // Check if this position contains a valid record
-  short slotLength = Convert.getShortValue(position, data);
-  if (slotLength == ConstSlot.EMPTY_SLOT) {
-      throw new IOException("Attempted to read a Vector100Dtype from an empty slot.");
+  if (position + (Vector100Dtype.VECTOR_SIZE * 2) > data.length) {
+      throw new IOException("Position out of bounds while reading Vector100Dtype.");
   }
-
   short[] values = new short[Vector100Dtype.VECTOR_SIZE];
   for (int i = 0; i < Vector100Dtype.VECTOR_SIZE; i++) {
       values[i] = Convert.getShortValue(position + (i * 2), data); // Each short is 2 bytes
   }
   return new Vector100Dtype(values);
 }
-
 
 
   
@@ -737,11 +717,6 @@ public Vector100Dtype get100DVectorValue(int position, byte[] data) throws IOExc
 	  else if ((length != EMPTY_SLOT) && (move == true)) 
 	    {
 	      offset = getSlotOffset (current_scan_posn);
-
-        // **Debugging: Check if this is a Vector100Dtype slot**
-        if (length == Vector100Dtype.VECTOR_SIZE * 2) {
-          System.out.println("Compacting Vector100Dtype slot at slot " + current_scan_posn);
-      }
 	      
 	      // slot[first_free_slot].length = slot[current_scan_posn].length;
 	      // slot[first_free_slot].offset = slot[current_scan_posn].offset; 

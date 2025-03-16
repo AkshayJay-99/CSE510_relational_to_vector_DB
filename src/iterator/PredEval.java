@@ -5,7 +5,6 @@ import global.*;
 import java.io.*;
 
 public class PredEval {
-
   /**
    * Evaluates condition expressions.
    * If attributes are of type `attrVector100D`, the comparison is based on Euclidean distance.
@@ -117,9 +116,9 @@ public class PredEval {
         if (comparison_type.attrType == AttrType.attrVector100D) {
           Vector100Dtype vector1 = t1.get100DVectorFld(fld1);
           Vector100Dtype vector2 = t2.get100DVectorFld(fld2);
-          
           if (vector1 != null && vector2 != null) {
-            temp_ptr.distance = (int) Math.max(0, Vector100Dtype.computeDistance(vector1, vector2));
+            int distance = (int) Vector100Dtype.computeDistance(vector1, vector2);
+            temp_ptr.distance = distance; // Store distance for further evaluation
           } else {
             temp_ptr.distance = -1; // Invalid comparison
           }
@@ -141,25 +140,25 @@ public class PredEval {
         // Handling comparison operators for attrVector100D
         switch (temp_ptr.op.attrOperator) {
           case AttrOperator.aopEQ:
-            op_res = (comp_res == temp_ptr.distance);
+            if (comp_res == temp_ptr.distance) op_res = true;
             break;
           case AttrOperator.aopLT:
-            op_res = (comp_res < temp_ptr.distance);
+            if (comp_res < temp_ptr.distance) op_res = true;
             break;
           case AttrOperator.aopGT:
-            op_res = (comp_res > temp_ptr.distance);
+            if (comp_res > temp_ptr.distance) op_res = true;
             break;
           case AttrOperator.aopNE:
-            op_res = (comp_res != temp_ptr.distance);
+            if (comp_res != temp_ptr.distance) op_res = true;
             break;
           case AttrOperator.aopLE:
-            op_res = (comp_res <= temp_ptr.distance);
+            if (comp_res <= temp_ptr.distance) op_res = true;
             break;
           case AttrOperator.aopGE:
-            op_res = (comp_res >= temp_ptr.distance);
+            if (comp_res >= temp_ptr.distance) op_res = true;
             break;
           case AttrOperator.aopNOT:
-            op_res = (comp_res != 0);
+            if (comp_res != 0) op_res = true;
             break;
           default:
             break;

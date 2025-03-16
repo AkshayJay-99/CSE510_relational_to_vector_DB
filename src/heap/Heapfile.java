@@ -384,6 +384,11 @@ public class Heapfile implements Filetype,  GlobalConst {
       HFPage nextDirPage = new HFPage(); 
       PageId currentDirPageId = new PageId(_firstDirPageId.pid);
       PageId nextDirPageId = new PageId();  // OK
+
+	//   System.out.println("📌 insertRecord() called for bucket: " + _fileName);
+	//   System.out.println("📌 Current record count before insert: " + getRecCnt());
+	//   System.out.println("📌 Checking for an existing page with space...");
+	//   System.out.println("📏 Record Size Check -> recLen: " + recLen);
       
       pinPage(currentDirPageId, currentDirPage, false/*Rdisk*/);
       
@@ -399,17 +404,21 @@ public class Heapfile implements Filetype,  GlobalConst {
 		 currentDirPage.nextRecord(currentDataPageRid))
 	    {
 	      atuple = currentDirPage.getRecord(currentDataPageRid);
-	      
+	      //recLen = atuple.getLength();
 	      dpinfo = new DataPageInfo(atuple);
 	      
-	      // need check the record length == DataPageInfo'slength
+	      
+		  // need check the record length == DataPageInfo'slength
 	      
 	       if(recLen <= dpinfo.availspace)
 		 {
 		   found = true;
+		   //System.out.println("✅ Found space! Inserting into PageID: " + dpinfo.pageId.pid);
 		   break;
 		 }  
+
 	    }
+
 	  
 	  // two cases:
 	  // (1) found == true:
@@ -460,6 +469,7 @@ public class Heapfile implements Filetype,  GlobalConst {
 		  
 		  byte [] tmpData = atuple.getTupleByteArray();
 		  currentDataPageRid = currentDirPage.insertRecord(tmpData);
+		  
 		  
 		  RID tmprid = currentDirPage.firstRecord();
 		  
@@ -575,9 +585,12 @@ public class Heapfile implements Filetype,  GlobalConst {
       
       RID rid;
       rid = currentDataPage.insertRecord(recPtr);
-      
       dpinfo.recct++;
       dpinfo.availspace = currentDataPage.available_space();
+	//   System.out.println("Inserted into PageID: " + dpinfo.pageId.pid + " | New Available Space: " + dpinfo.availspace);
+	//   System.out.println("✅ Inserted into PageID: " + dpinfo.pageId.pid + 
+    //                " | Old Space: " + (dpinfo.availspace + recLen) + 
+    //                " | New Space: " + dpinfo.availspace);
       
       
       unpinPage(dpinfo.pageId, true /* = DIRTY */);

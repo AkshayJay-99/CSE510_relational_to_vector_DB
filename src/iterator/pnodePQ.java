@@ -76,9 +76,22 @@ public abstract class pnodePQ
    */
   public int pnodeCMP(pnode a, pnode b) 
          throws IOException, UnknowAttrType, TupleUtilsException {
-    int ans = TupleUtils.CompareTupleWithTuple(fld_type, a.tuple, fld_no, b.tuple, fld_no);
-    return ans;
+
+    if(fld_type.attrType == AttrType.attrVector100D)
+    {
+        if (a.distance < b.distance) return -1;
+        if (a.distance > b.distance) return 1;
+        return 0;
+    }
+    else
+    {
+        int ans = TupleUtils.CompareTupleWithTuple(fld_type, a.tuple, fld_no, b.tuple, fld_no);
+        return ans;
+    }
+
+
   }
+
 
   /**
    * tests whether the two elements are equal.
