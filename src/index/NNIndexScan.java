@@ -86,7 +86,7 @@ public class NNIndexScan {
                 e.printStackTrace();
             }
             try {
-                sort = new Sort(types, (short) _noInFlds, _s_sizes, fscan, fldNum, new TupleOrder(TupleOrder.Ascending), 30, 1024, query, count);
+                sort = new Sort(types, (short) _noInFlds, _s_sizes, fscan, fldNum, new TupleOrder(TupleOrder.Ascending), 30, 100, query, count);
             } catch (Exception e) {
                 e.printStackTrace();
             }

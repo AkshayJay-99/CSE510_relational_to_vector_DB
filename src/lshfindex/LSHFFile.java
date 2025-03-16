@@ -696,7 +696,7 @@ public class LSHFFile extends IndexFile
                 RID rid = null;
                 rid = ((LeafData) nearestEntry.data).getData();
                 //rid.pageNo.pid + ", Slot: " + rid.slotNo
-                System.out.println("NN: " + nearestEntry.key +  " RID.pid: " + rid.pageNo.pid + " RID.slotNum: " + rid.slotNo + " | Distance: " + distance);
+                //System.out.println("NN: " + nearestEntry.key +  " RID.pid: " + rid.pageNo.pid + " RID.slotNum: " + rid.slotNo + " | Distance: " + distance);
                 returnValues[i] = nearestEntry;
                 i++;
 

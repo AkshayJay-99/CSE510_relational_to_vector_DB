@@ -86,7 +86,7 @@ public class RSIndexScan {
                 e.printStackTrace();
             }
             try {
-                sort = new Sort(types, (short) _noInFlds, _s_sizes, fscan, fldNum, new TupleOrder(TupleOrder.Ascending), 30, 1024, query, 0);
+                sort = new Sort(types, (short) _noInFlds, _s_sizes, fscan, fldNum, new TupleOrder(TupleOrder.Ascending), 30, 100, query, 0);
             } catch (Exception e) {
                 e.printStackTrace();
             }

@@ -23,8 +23,8 @@ public class BatchInsert {
         String dataFileName = args[2]; // Data file
         String dbName = args[3]; // Database name
         String dbpath = "/tmp/"+System.getProperty("user.name")+"."+dbName; 
-        int numPages = 100000; // Disk pages allocated
-        int bufferSize = 5000; // Buffer pool size
+        int numPages = 6000; // Disk pages allocated
+        int bufferSize = 16000; // Buffer pool size
         
         try {
             // 🔹 Step 1: Initialize MiniBase

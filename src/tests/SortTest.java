@@ -44,10 +44,10 @@ class SORTDriver extends TestDriver
 	"yi-chun", "yiching", "yuc", "yung", "yuvadee", "zmudzin" };
 
   private static int   NUM_RECORDS = data2.length; 
-  private static int   LARGE = 400; 
+  private static int   LARGE = 20000; 
   private static short REC_LEN1 = 32; 
   private static short REC_LEN2 = 160; 
-  private static int   SORTPGNUM = 10; 
+  private static int   SORTPGNUM = 200; 
 
 
   public SORTDriver() {
@@ -58,7 +58,7 @@ class SORTDriver extends TestDriver
     
     System.out.println ("\n" + "Running " + testName() + " tests...." + "\n");
     System.out.println(dbpath);
-    SystemDefs sysdef = new SystemDefs( dbpath, 3000, 20, "Clock" );
+    SystemDefs sysdef = new SystemDefs( dbpath, 6000, 200, "Clock" );
 
     // Kill anything that might be hanging around
     String newdbpath;
