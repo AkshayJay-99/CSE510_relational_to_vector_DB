@@ -1,14 +1,13 @@
 package tests;
 
-import java.io.*; 
-import global.*;
-import bufmgr.*;
+import btree.*;
 import diskmgr.*;
+import global.*;
 import heap.*;
-import iterator.*;
 import index.*;
-import btree.*; 
-import java.util.Random;
+import iterator.*;
+import java.io.*;
+import java.util.Random; 
 
 
 class IndexDriver extends TestDriver 

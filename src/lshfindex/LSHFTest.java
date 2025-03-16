@@ -1,8 +1,6 @@
 package lshfindex;
-import java.util.Random;
 import global.*;
-import java.util.*;
-import java.util.Arrays;
+import java.util.Random;
 
 public class LSHFTest {
     
@@ -15,7 +13,7 @@ public class LSHFTest {
             // // Step 1: Initialize MiniBase & Create LSH Index
             // SystemDefs sysdef = new SystemDefs("minibase.lshftest", 5000, 2000, "Clock");
             // LSHFFile lshIndex = new LSHFFile("lsh_test_index", 5, 3); // h=5, L=3
-            // Random random = new Random(42);
+            // Random random = new Random();
             // short[] queryVec = new short[100];
             // // Step 2: Insert Sample Vectors
             // //System.out.println("Inserting Vectors");
@@ -56,7 +54,7 @@ public class LSHFTest {
                 //         // Step 1: Initialize MiniBase & Create LSH Index
                 // SystemDefs sysdef = new SystemDefs("minibase.lshftest", 5000, 2000, "Clock");
                 // LSHFFile lshIndex = new LSHFFile("lsh_test_index", 5, 3); // h=5, L=3
-                // Random random = new Random(42);
+                // Random random = new Random();
 
                 // // Step 2: Insert Sample Vectors
                 // for (int i = 0; i < 10; i++) { // Inserting fewer records for easier debugging
@@ -93,7 +91,7 @@ public class LSHFTest {
 
             SystemDefs sysdef = new SystemDefs("minibase.lshftest", 5000, 2000, "Clock");
             LSHFFile lshf = new LSHFFile("myDatabase", 5, 10);
-            Random random = new Random(42);
+            Random random = new Random();
 
             Vector100Dtype queryKey = null;
 
@@ -130,7 +128,7 @@ public class LSHFTest {
 
             System.out.println("Starting a NNSearch");
 
-            lshf.NN_Search(queryKey, 20);
+            lshf.NN_Search(queryKey, 30);
 
             System.out.println("Finishing a NNSearch");
 

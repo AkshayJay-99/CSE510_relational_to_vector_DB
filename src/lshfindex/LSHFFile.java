@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 public class LSHFFile extends IndexFile
 {
@@ -70,6 +71,71 @@ public class LSHFFile extends IndexFile
                 //Math.floor(a)
             }
         }
+    }
+
+    public void saveHashFunctions() throws Exception 
+    {
+        Heapfile hashFile = new Heapfile("hash_functions");
+        Tuple tuple = new Tuple();
+
+        AttrType[] attrTypes = new AttrType[]{ 
+        new AttrType(AttrType.attrInteger), // Layer ID
+        new AttrType(AttrType.attrInteger), // Hash ID
+        new AttrType(AttrType.attrString),   // Projection Vector (100D)
+        new AttrType(AttrType.attrInteger)  // b_value (int)
+        };
+
+        short[] strSizes = new short[]{800};
+        tuple.setHdr((short) 4, attrTypes, strSizes);
+
+        for (int i = 0; i < layers; i++) {
+            for (int j = 0; j < hashes; j++) {
+                tuple.setIntFld(1, i);  // Layer ID
+                tuple.setIntFld(2, j);  // Hash ID
+
+                // Convert projection vector to byte array
+                String projString = Arrays.stream(projections[i][j]).mapToObj(Double::toString).collect(Collectors.joining(","));
+                tuple.setStrFld(3, projString);
+
+                tuple.setIntFld(4, b_values[i][j]); // Store b_value
+
+                hashFile.insertRecord(tuple.getTupleByteArray());
+            }
+        }
+    }
+
+    public void loadHashFunctions() throws Exception {
+        Heapfile hashFile = new Heapfile("hash_functions");
+        Scan scan = new Scan(hashFile);
+        Tuple tuple;
+        RID rid = new RID();
+
+        projections = new double[layers][hashes][100];
+        b_values = new int[layers][hashes];
+
+        while ((tuple = scan.getNext(rid)) != null) {
+            tuple.setHdr((short) 4, 
+                new AttrType[]{
+                    new AttrType(AttrType.attrInteger), 
+                    new AttrType(AttrType.attrInteger), 
+                    new AttrType(AttrType.attrString), 
+                    new AttrType(AttrType.attrInteger)
+                }, 
+                new short[]{800}); // Same size assumption
+
+            int layer = tuple.getIntFld(1);
+            int hashId = tuple.getIntFld(2);
+
+            // Retrieve projection vector from stored string
+            String projString = tuple.getStrFld(3);
+            double[] projArray = Arrays.stream(projString.split(","))
+                                    .mapToDouble(Double::parseDouble)
+                                    .toArray();
+
+            projections[layer][hashId] = projArray;
+            b_values[layer][hashId] = tuple.getIntFld(4);
+        }
+
     }
 
     public double[] convertShortToDouble(short[] inputArray)
@@ -429,7 +495,7 @@ public class LSHFFile extends IndexFile
         return product;
     }
 
-    public LSHFFile(String fileName, int h, int L) throws ConstructPageException, IOException, GetFileEntryException, FileIOException, AddFileEntryException, PinPageException, InvalidPageNumberException, ReplacerException, ReplacerException, DiskMgrException, PageUnpinnedException, HashEntryNotFoundException, InvalidFrameNumberException
+    public LSHFFile(String fileName, int h, int L) throws Exception, ConstructPageException, IOException, GetFileEntryException, FileIOException, AddFileEntryException, PinPageException, InvalidPageNumberException, ReplacerException, ReplacerException, DiskMgrException, PageUnpinnedException, HashEntryNotFoundException, InvalidFrameNumberException
     {
         this.hashes = h;
         this.layers = L;
@@ -456,7 +522,15 @@ public class LSHFFile extends IndexFile
             }
         }
 
-        initalizeHashFunction();
+        //initalizeHashFunction();
+        try {
+            //System.out.println(" Hash functions found in HeapFile. Retrieving");
+            loadHashFunctions();
+        } catch (Exception e) {
+            //System.out.println(" Hash functions not found in HeapFile. Generating new ones...");
+            initalizeHashFunction();
+            saveHashFunctions();
+        }
 
         // System.out.println("We have initalized the hash funciton");
         // System.out.flush();

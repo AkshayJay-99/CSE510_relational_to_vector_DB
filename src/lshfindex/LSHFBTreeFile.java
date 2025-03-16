@@ -7,20 +7,14 @@
 
 package lshfindex;
 
-import java.io.*;
-import diskmgr.*;
 import bufmgr.*;
+import diskmgr.*;
 import global.*;
-import heap.*;
-
+import java.io.*;
 import java.util.ArrayList;
-import java.util.HashSet;
-
-import java.util.Queue;
-import java.util.LinkedList;
-
-// for debug
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Queue;
 
 /** btfile.java
  * This is the main definition of class BTreeFile, which derives from 
@@ -659,7 +653,7 @@ public class LSHFBTreeFile extends IndexFile
 				recordCount++;
 				countEntry = leafPage.getNext(countRid);
 			}
-			//System.out.println("📊 DEBUG: Total Records in Leaf Page " + leafPage.getCurPage().pid + " = " + recordCount);
+			System.out.println("📊 DEBUG: Total Records in Leaf Page " + leafPage.getCurPage().pid + " = " + recordCount);
 
 			// ✅ Process and store leaf entries
 			pinPage(leafPage.getCurPage());
@@ -676,15 +670,39 @@ public class LSHFBTreeFile extends IndexFile
 			// ✅ Check for right sibling before moving up
 			PageId rightSiblingId = leafPage.getNextPage();
 
-			if (rightSiblingId.pid != INVALID_PAGE) {
-				//System.out.println("➡️ Moving to existing right sibling: Page " + rightSiblingId.pid);
+			// if (rightSiblingId.pid != INVALID_PAGE) {
+			// 	//System.out.println("➡️ Moving to existing right sibling: Page " + rightSiblingId.pid);
 
+			// 	if (pinCountMap.getOrDefault(leafPage.getCurPage().pid, 0) > 0) {
+			// 		unpinPage(leafPage.getCurPage(), false);
+			// 	}
+
+			// 	leafPage = new LSHFBTLeafPage(pinPage(rightSiblingId), AttrType.attrVector100D);
+			// 	continue;
+			// }
+
+			while (rightSiblingId.pid != INVALID_PAGE) { // Keep traversing all right siblings
+				//System.out.println("➡️ Moving to right sibling: Page " + rightSiblingId.pid);
+				
 				if (pinCountMap.getOrDefault(leafPage.getCurPage().pid, 0) > 0) {
 					unpinPage(leafPage.getCurPage(), false);
 				}
 
 				leafPage = new LSHFBTLeafPage(pinPage(rightSiblingId), AttrType.attrVector100D);
-				continue;
+
+				RID siblingRid = new RID();
+				KeyDataEntry siblingEntry = leafPage.getFirst(siblingRid);
+				while (siblingEntry != null) {
+
+					//System.out.println("distace to query within range search: " + distance);
+
+					nearestNeighbors.add(siblingEntry);
+					
+					siblingEntry = leafPage.getNext(siblingRid);
+				}
+
+				unpinPage(leafPage.getCurPage(), true);
+				rightSiblingId = leafPage.getNextPage(); // Move to the next right sibling
 			}
 
 			if (nearestNeighbors.size() >= number_of_neighbors)
@@ -910,6 +928,7 @@ public class LSHFBTreeFile extends IndexFile
 			int recordCount = 0;
 			RID countRid = new RID();
 			KeyDataEntry countEntry = leafPage.getFirst(countRid);
+
 			while (countEntry != null) {
 				recordCount++;
 				countEntry = leafPage.getNext(countRid);
@@ -929,8 +948,9 @@ public class LSHFBTreeFile extends IndexFile
 
 				if(distance > highest_val_found)
 					highest_val_found = distance;
-
-				nearestNeighbors.add(entry);  // ✅ Add to nearest neighbors list
+				
+				if(distance < highest_val_found)
+					nearestNeighbors.add(entry);  // ✅ Add to nearest neighbors list
 				//if (nearestNeighbors.size() >= number_of_neighbors) break; // Stop when we have enough
 				entry = leafPage.getNext(rid);
 			}
@@ -939,15 +959,45 @@ public class LSHFBTreeFile extends IndexFile
 			// ✅ Check for right sibling before moving up
 			PageId rightSiblingId = leafPage.getNextPage();
 
-			if (rightSiblingId.pid != INVALID_PAGE) {
-				//System.out.println("➡️ Moving to existing right sibling: Page " + rightSiblingId.pid);
+			// if (rightSiblingId.pid != INVALID_PAGE) {
+			// 	//System.out.println("➡️ Moving to existing right sibling: Page " + rightSiblingId.pid);
 
+			// 	if (pinCountMap.getOrDefault(leafPage.getCurPage().pid, 0) > 0) {
+			// 		unpinPage(leafPage.getCurPage(), false);
+			// 	}
+
+			// 	leafPage = new LSHFBTLeafPage(pinPage(rightSiblingId), AttrType.attrVector100D);
+			// 	continue;
+			// }
+
+			while (rightSiblingId.pid != INVALID_PAGE) { // Keep traversing all right siblings
+				//System.out.println("➡️ Moving to right sibling: Page " + rightSiblingId.pid);
+				
 				if (pinCountMap.getOrDefault(leafPage.getCurPage().pid, 0) > 0) {
 					unpinPage(leafPage.getCurPage(), false);
 				}
 
 				leafPage = new LSHFBTLeafPage(pinPage(rightSiblingId), AttrType.attrVector100D);
-				continue;
+
+				RID siblingRid = new RID();
+				KeyDataEntry siblingEntry = leafPage.getFirst(siblingRid);
+				while (siblingEntry != null) {
+
+					double distance = query.computeDistance(query, ((Vector100DKey) siblingEntry.key).getKey());
+					//System.out.println("distace to query within range search: " + distance);
+
+					if(distance > highest_val_found)
+						highest_val_found = distance;
+
+					if (distance <= range_to_search) {
+						nearestNeighbors.add(siblingEntry);
+					}
+					
+					siblingEntry = leafPage.getNext(siblingRid);
+				}
+
+				unpinPage(leafPage.getCurPage(), true);
+				rightSiblingId = leafPage.getNextPage(); // Move to the next right sibling
 			}
 
 			if (highest_val_found >= range_to_search)
@@ -988,10 +1038,17 @@ public class LSHFBTreeFile extends IndexFile
 							KeyDataEntry tempEntry = siblingLeafPage.getFirst(tempRid);
 
 							while (tempEntry != null) {
-								//System.out.println("✅ Extra Leaf Record: " + tempEntry.key);
+								System.out.println("✅ Extra Leaf Record: " + tempEntry.key);
 								nearestNeighbors.add(tempEntry);  // ✅ Add to nearest neighbors list
 								visitedLeaf.add(siblingPageId);
-								if (highest_val_found >= range_to_search) break;  // Stop when enough records found
+
+								double distance = query.computeDistance(query, ((Vector100DKey) tempEntry.key).getKey());
+
+								if(distance > highest_val_found)
+									highest_val_found = distance;
+
+								//if (highest_val_found >= range_to_search) break;  // Stop when enough records found
+
 								tempEntry = siblingLeafPage.getNext(tempRid);
 							}
 							unpinPage(siblingPageId);
@@ -1001,14 +1058,16 @@ public class LSHFBTreeFile extends IndexFile
 				}
 				unpinPage(parentIndexId);
 
-				// ✅ If enough neighbors found, stop searching
+				//  If enough neighbors found, stop searching
 				if (highest_val_found >= range_to_search) break;
 			}
+
+
 
 			break;  // End search once we’ve exhausted all options
 		}
 
-		// ✅ Return nearest neighbors (or process them)
+		//  Return nearest neighbors (or process them)
 		return nearestNeighbors;
 
 		

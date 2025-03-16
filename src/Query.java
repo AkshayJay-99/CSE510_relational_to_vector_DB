@@ -71,9 +71,10 @@ public class Query {
                     }
                 }
             }
+            System.out.println("schemaString: " + schemaString);
             int L = schemaString.charAt(schemaString.length()-1) - '0';
             int h = schemaString.charAt(schemaString.length()-2) - '0';
-
+            System.out.println("H"+h);
             while (t != null) {
                 try {
                     t = sc_scan.get_next();

@@ -119,7 +119,7 @@ public class BatchInsert {
                         Vector100Dtype vector100D = new Vector100Dtype();
                         vector100D = tuple.get100DVectorFld(i + 1);
                         lshf[i].insert(new Vector100DKey(vector100D), recordID);
-                        System.out.println("Inserted into LSHF: Page " + recordID.pageNo.pid + ", Slot " + recordID.slotNo + " for attribute " + (i + 1+" with vector: " + vector100D));
+                        //System.out.println("Inserted into LSHF: Page " + recordID.pageNo.pid + ", Slot " + recordID.slotNo + " for attribute " + (i + 1+" with vector: " + vector100D));
                     }
                 }  
                 //System.out.println("Record ID: Page " + recordID.pageNo.pid + ", Slot " + recordID.slotNo);
