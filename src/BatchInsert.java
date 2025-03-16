@@ -102,7 +102,7 @@ public class BatchInsert {
                             short[] vector = new short[100];
                             String[] vectorValues = line.trim().split("\\s+"); // Read 100 value
                              for (int j = 0; j < 100; j++) {
-                                vector[j] =(short) Short.parseShort(vectorValues[j]); //Change the value of short to int
+                                vector[j] =(short) Float.parseFloat(vectorValues[j]); //Change the value of short to int
                            }
                             tuple.set100DVectorFld(fieldNum, new Vector100Dtype(vector));
                             break;
