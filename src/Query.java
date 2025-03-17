@@ -194,7 +194,6 @@ public class Query {
             } 
             else {
                 System.out.println("Performing full heapfile scan for nearest neighbors...");
-                System.out.println("Performing full heapfile scan for range query...");
                 TupleOrder[] order = new TupleOrder[2];
                 order[0] = new TupleOrder(TupleOrder.Ascending);
                 order[1] = new TupleOrder(TupleOrder.Descending);
@@ -219,7 +218,7 @@ public class Query {
     public static void flushPages() {
         try {
             SystemDefs.JavabaseBM.flushAllPages(); // Assuming there's a method to flush all pages
-            System.out.println("All pages flushed to disk.");
+            //System.out.println("All pages flushed to disk.");
         } catch (Exception e) {
             System.err.println("Error flushing pages: " + e.getMessage());
             e.printStackTrace();

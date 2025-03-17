@@ -73,9 +73,9 @@ public class LSHFFile extends IndexFile
         }
     }
 
-    public void saveHashFunctions() throws Exception 
+    public void saveHashFunctions(String fileName) throws Exception 
     {
-        Heapfile hashFile = new Heapfile("hash_functions");
+        Heapfile hashFile = new Heapfile(fileName+"hash_functions");
         Tuple tuple = new Tuple();
 
         AttrType[] attrTypes = new AttrType[]{ 
@@ -104,8 +104,8 @@ public class LSHFFile extends IndexFile
         }
     }
 
-    public void loadHashFunctions() throws Exception {
-        Heapfile hashFile = new Heapfile("hash_functions");
+    public void loadHashFunctions(String fileName) throws Exception {
+        Heapfile hashFile = new Heapfile(fileName+"hash_functions");
         Scan scan = new Scan(hashFile);
         Tuple tuple;
         RID rid = new RID();
@@ -525,11 +525,11 @@ public class LSHFFile extends IndexFile
         //initalizeHashFunction();
         try {
             //System.out.println(" Hash functions found in HeapFile. Retrieving");
-            loadHashFunctions();
+            loadHashFunctions(fileName);
         } catch (Exception e) {
             //System.out.println(" Hash functions not found in HeapFile. Generating new ones...");
             initalizeHashFunction();
-            saveHashFunctions();
+            saveHashFunctions(fileName);
         }
 
         // System.out.println("We have initalized the hash funciton");

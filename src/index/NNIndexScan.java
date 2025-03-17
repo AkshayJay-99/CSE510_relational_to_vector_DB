@@ -6,6 +6,8 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import lshfindex.*;
+import diskmgr.PCounter;
+
 
 public class NNIndexScan {
     private List<RID> nnResults;  // List of RIDs from rangeSearch
@@ -61,6 +63,11 @@ public class NNIndexScan {
                 LSHFFile lshf = new LSHFFile(indName, h, L);
                 KeyDataEntry[] nn_results = lshf.NN_Search(query, count);
                 Heapfile heapfile = new Heapfile("data_heap.in");
+
+                System.out.println();
+                System.out.println("Disk pages read after LSH NN Search: " + PCounter.rcounter);
+                System.out.println("Disk pages written after LSH NN Search: "+PCounter.wcounter);
+
                 for (KeyDataEntry k : nn_results) {
                     Tuple projectedTuple = new Tuple();
                     Tuple tuple = new Tuple();
