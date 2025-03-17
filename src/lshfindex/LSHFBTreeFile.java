@@ -538,7 +538,7 @@
  
 			 System.out.println("✅ Created new ROOT Leaf Node at Page ID: " + newRootPageId.pid);
  
-			 unpinPage(newRootPageId, true);
+			 unpinPage(newRootPageId, false);
 			 updateHeader(newRootPageId);
 			 return nearestNeighbors;
 		 }
@@ -595,7 +595,7 @@
  
 						 // ✅ Reference this for insertion in Step 3
 						 currentPageId = leafPageId;
-						 unpinPage(currentPageId, true);
+						 unpinPage(currentPageId, false);
 						 
 					 } else {
 						 // ✅ Leaf already exists - reference it for insertion
@@ -610,7 +610,7 @@
 							 // ✅ Correctly reference the existing leaf page
 							 leafPage = new LSHFBTLeafPage(nextPage, AttrType.attrVector100D);
 							 //System.out.println("✅ Confirmed existing leaf at: " + currentPath + " (Page ID: " + nextPageId.pid + ")");
-							 unpinPage(nextPageId, true);
+							 unpinPage(nextPageId, false);
  
 						 } else {
 							 // 🚨 It's actually an index, so we need to create a new leaf instead
@@ -636,11 +636,11 @@
 							 currentPageId = newLeafPageId;
 							 
 							 // ✅ Unpin the newly created leaf so it gets written to disk
-							 unpinPage(newLeafPageId, true);
+							 unpinPage(newLeafPageId, false);
 						 }
 					 }
  
-					 unpinPage(indexPage.getCurPage(), true);
+					 unpinPage(indexPage.getCurPage(), false);
 					 break;  // **Exit loop - we found or created the leaf**
 				 }
 				 unpinPage(currentPageId);  
@@ -671,7 +671,7 @@
 				 //if (nearestNeighbors.size() >= number_of_neighbors) break; // Stop when we have enough
 				 entry = leafPage.getNext(rid);
 			 }
-			 unpinPage(leafPage.getCurPage(), true);
+			 unpinPage(leafPage.getCurPage(), false);
  
 			 // ✅ Check for right sibling before moving up
 			 PageId rightSiblingId = leafPage.getNextPage();
@@ -709,14 +709,13 @@
 					 siblingEntry = leafPage.getNext(siblingRid);
 				 }
  
-				 unpinPage(leafPage.getCurPage(), true);
+				 unpinPage(leafPage.getCurPage(), false);
 				 rightSiblingId = leafPage.getNextPage(); // Move to the next right sibling
 			 }
- 
 			 if (nearestNeighbors.size() >= number_of_neighbors)
 			 {
 				 if (pinCountMap.getOrDefault(leafPage.getCurPage().pid, 0) > 0) {
-					 unpinPage(leafPage.getCurPage(), true);
+					 unpinPage(leafPage.getCurPage(), false);
 				 }
 				 
 				 return nearestNeighbors;
@@ -819,7 +818,7 @@
  
 			 System.out.println("✅ Created new ROOT Leaf Node at Page ID: " + newRootPageId.pid);
  
-			 unpinPage(newRootPageId, true);
+			 unpinPage(newRootPageId, false);
 			 updateHeader(newRootPageId);
 			 return nearestNeighbors;
 		 }
@@ -876,7 +875,7 @@
  
 						 // ✅ Reference this for insertion in Step 3
 						 currentPageId = leafPageId;
-						 unpinPage(currentPageId, true);
+						 unpinPage(currentPageId, false);
 						 
 					 } else {
 						 // ✅ Leaf already exists - reference it for insertion
@@ -891,7 +890,7 @@
 							 // ✅ Correctly reference the existing leaf page
 							 leafPage = new LSHFBTLeafPage(nextPage, AttrType.attrVector100D);
 							 //System.out.println("✅ Confirmed existing leaf at: " + currentPath + " (Page ID: " + nextPageId.pid + ")");
-							 unpinPage(nextPageId, true);
+							 unpinPage(nextPageId, false);
  
 						 } else {
 							 // 🚨 It's actually an index, so we need to create a new leaf instead
@@ -917,11 +916,11 @@
 							 currentPageId = newLeafPageId;
 							 
 							 // ✅ Unpin the newly created leaf so it gets written to disk
-							 unpinPage(newLeafPageId, true);
+							 unpinPage(newLeafPageId, false);
 						 }
 					 }
  
-					 unpinPage(indexPage.getCurPage(), true);
+					 unpinPage(indexPage.getCurPage(), false);
 					 break;  // **Exit loop - we found or created the leaf**
 				 }
 				 unpinPage(currentPageId);  
@@ -962,7 +961,7 @@
 				 //if (nearestNeighbors.size() >= number_of_neighbors) break; // Stop when we have enough
 				 entry = leafPage.getNext(rid);
 			 }
-			 unpinPage(leafPage.getCurPage(), true);
+			 unpinPage(leafPage.getCurPage(), false);
  
 			 // ✅ Check for right sibling before moving up
 			 PageId rightSiblingId = leafPage.getNextPage();
@@ -1004,14 +1003,14 @@
 					 siblingEntry = leafPage.getNext(siblingRid);
 				 }
  
-				 unpinPage(leafPage.getCurPage(), true);
+				 unpinPage(leafPage.getCurPage(), false);
 				 rightSiblingId = leafPage.getNextPage(); // Move to the next right sibling
 			 }
  
 			 if (highest_val_found >= range_to_search)
 			 {
 				 if (pinCountMap.getOrDefault(leafPage.getCurPage().pid, 0) > 0) {
-					 unpinPage(leafPage.getCurPage(), true);
+					 unpinPage(leafPage.getCurPage(), false);
 				 }
 				 
 				 return nearestNeighbors;

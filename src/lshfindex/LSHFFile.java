@@ -73,69 +73,60 @@ public class LSHFFile extends IndexFile
         }
     }
 
-    public void saveHashFunctions(String fileName) throws Exception 
-    {
-        Heapfile hashFile = new Heapfile(fileName+"hash_functions");
-        Tuple tuple = new Tuple();
+    public void saveHashFunction(String filename) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename))) {
+            writer.write(layers + " " + hashes + " " + width + "\n");
 
-        AttrType[] attrTypes = new AttrType[]{ 
-        new AttrType(AttrType.attrInteger), // Layer ID
-        new AttrType(AttrType.attrInteger), // Hash ID
-        new AttrType(AttrType.attrString),   // Projection Vector (100D)
-        new AttrType(AttrType.attrInteger)  // b_value (int)
-        };
-
-        short[] strSizes = new short[]{800};
-        tuple.setHdr((short) 4, attrTypes, strSizes);
-
-        for (int i = 0; i < layers; i++) {
-            for (int j = 0; j < hashes; j++) {
-                tuple.setIntFld(1, i);  // Layer ID
-                tuple.setIntFld(2, j);  // Hash ID
-
-                // Convert projection vector to byte array
-                String projString = Arrays.stream(projections[i][j]).mapToObj(Double::toString).collect(Collectors.joining(","));
-                tuple.setStrFld(3, projString);
-
-                tuple.setIntFld(4, b_values[i][j]); // Store b_value
-
-                hashFile.insertRecord(tuple.getTupleByteArray());
+            for (int i = 0; i < layers; i++) {
+                for (int j = 0; j < hashes; j++) {
+                    writer.write(b_values[i][j] + " ");
+                }
+                writer.write("\n");
             }
+
+            for (int i = 0; i < layers; i++) {
+                for (int j = 0; j < hashes; j++) {
+                    for (int k = 0; k < 100; k++) {
+                        writer.write(projections[i][j][k] + " ");
+                    }
+                    writer.write("\n");
+                }
+            }
+
+            //System.out.println("✅ Hash function saved successfully to " + filename);
+        } catch (IOException e) {
+            System.out.println("❌ Error saving hash function: " + e.getMessage());
         }
     }
 
-    public void loadHashFunctions(String fileName) throws Exception {
-        Heapfile hashFile = new Heapfile(fileName+"hash_functions");
-        Scan scan = new Scan(hashFile);
-        Tuple tuple;
-        RID rid = new RID();
+    public void loadHashFunction(String filename) throws IOException {
+        try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
+            String[] params = reader.readLine().split(" ");
+            layers = Integer.parseInt(params[0]);
+            hashes = Integer.parseInt(params[1]);
+            width = Integer.parseInt(params[2]);
 
-        projections = new double[layers][hashes][100];
-        b_values = new int[layers][hashes];
+            projections = new double[layers][hashes][100];
+            b_values = new int[layers][hashes];
 
-        while ((tuple = scan.getNext(rid)) != null) {
-            tuple.setHdr((short) 4, 
-                new AttrType[]{
-                    new AttrType(AttrType.attrInteger), 
-                    new AttrType(AttrType.attrInteger), 
-                    new AttrType(AttrType.attrString), 
-                    new AttrType(AttrType.attrInteger)
-                }, 
-                new short[]{800}); // Same size assumption
+            for (int i = 0; i < layers; i++) {
+                String[] bRow = reader.readLine().split(" ");
+                for (int j = 0; j < hashes; j++) {
+                    b_values[i][j] = Integer.parseInt(bRow[j]);
+                }
+            }
 
-            int layer = tuple.getIntFld(1);
-            int hashId = tuple.getIntFld(2);
+            for (int i = 0; i < layers; i++) {
+                for (int j = 0; j < hashes; j++) {
+                    String[] pRow = reader.readLine().split(" ");
+                    for (int k = 0; k < 100; k++) {
+                        projections[i][j][k] = Double.parseDouble(pRow[k]);
+                    }
+                }
+            }
 
-            // Retrieve projection vector from stored string
-            String projString = tuple.getStrFld(3);
-            double[] projArray = Arrays.stream(projString.split(","))
-                                    .mapToDouble(Double::parseDouble)
-                                    .toArray();
-
-            projections[layer][hashId] = projArray;
-            b_values[layer][hashId] = tuple.getIntFld(4);
+            //System.out.println("✅ Hash function loaded successfully from " + filename);
         }
-
     }
 
     public double[] convertShortToDouble(short[] inputArray)
@@ -525,11 +516,11 @@ public class LSHFFile extends IndexFile
         //initalizeHashFunction();
         try {
             //System.out.println(" Hash functions found in HeapFile. Retrieving");
-            loadHashFunctions(fileName);
+            loadHashFunction(fileName);
         } catch (Exception e) {
             //System.out.println(" Hash functions not found in HeapFile. Generating new ones...");
             initalizeHashFunction();
-            saveHashFunctions(fileName);
+            saveHashFunction(fileName);
         }
 
         // System.out.println("We have initalized the hash funciton");
@@ -649,14 +640,16 @@ public class LSHFFile extends IndexFile
         {
             ArrayList<KeyDataEntry> nearestNeighbors = new ArrayList<>();
             //System.out.println("Printing bucket key: " + bucketKeys[i] + " within layer: " + i);
-            if(k != 0)
+            if(k != 0){
                 nearestNeighbors = btreeIndex[i].NNSearch(bucketKeys[i], k);
+            }
             else
             {
                 LSHFFileScan scan = new LSHFFileScan(btreeIndex[i]);
                 nearestNeighbors = scan.LSHFFileScan();
             }
-            
+            System.out.println();
+            System.out.println("Nearest Neighbors: " + nearestNeighbors.size());
             
 
             for(int j = 0; j < nearestNeighbors.size(); j++)
@@ -766,7 +759,8 @@ public class LSHFFile extends IndexFile
             ArrayList<KeyDataEntry> nearestNeighbors = btreeIndex[i].RangeSearch(bucketKeys[i], key, range);
             
             
-
+            System.out.println();
+            System.out.println("✅ Nearest Neighbors in layer " + i+ ": " + nearestNeighbors.size());
             for(int j = 0; j < nearestNeighbors.size(); j++)
             {
                 KeyDataEntry entry = nearestNeighbors.get(j);
