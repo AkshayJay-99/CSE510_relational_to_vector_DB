@@ -628,7 +628,8 @@ public class LSHFFile extends IndexFile
 
         String[] bucketKeys = new String[layers]; 
 
-        HashSet<String> uniqueVectors = new HashSet<>();
+        //HashSet<String> uniqueVectors = new HashSet<>();
+        HashSet<String> uniqueRID = new HashSet<>();
 
         for(int i = 0; i < layers; i++)
         {
@@ -669,11 +670,19 @@ public class LSHFFile extends IndexFile
 
                 //System.out.println("Printing vector: " + distance);
 
-                String vectorKey = Arrays.toString(contender.getValues());
+                //String vectorKey = Arrays.toString(contender.getValues());
+
+                RID rid = null;
+                rid = ((LeafData) entry.data).getData();
+
+                String ridKey = "" + rid.pageNo.pid + "," + rid.slotNo;
 
                 
-                if (!uniqueVectors.contains(vectorKey)) {
-                    uniqueVectors.add(vectorKey);
+                
+                
+                if (!uniqueRID.contains(ridKey)) {
+                    //uniqueVectors.add(vectorKey);
+                    uniqueRID.add(ridKey);
                     distance_to_query.add(new AbstractMap.SimpleEntry<>(entry, distance));
                 }
                 
@@ -696,7 +705,8 @@ public class LSHFFile extends IndexFile
                 RID rid = null;
                 rid = ((LeafData) nearestEntry.data).getData();
                 //rid.pageNo.pid + ", Slot: " + rid.slotNo
-                //System.out.println("NN: " + nearestEntry.key +  " RID.pid: " + rid.pageNo.pid + " RID.slotNum: " + rid.slotNo + " | Distance: " + distance);
+                //+ nearestEntry.key
+                //System.out.println("NN: "  +  " RID.pid: " + rid.pageNo.pid + " RID.slotNum: " + rid.slotNo + " | Distance: " + distance);
                 returnValues[i] = nearestEntry;
                 i++;
 
@@ -734,7 +744,8 @@ public class LSHFFile extends IndexFile
 
         String[] bucketKeys = new String[layers]; 
 
-        HashSet<String> uniqueVectors = new HashSet<>();
+        //HashSet<String> uniqueVectors = new HashSet<>();
+        HashSet<String> uniqueRID = new HashSet<>();
 
         for(int i = 0; i < layers; i++)
         {
@@ -769,11 +780,18 @@ public class LSHFFile extends IndexFile
 
                 String vectorKey = Arrays.toString(contender.getValues());
 
+                RID rid = null;
+                rid = ((LeafData) entry.data).getData();
+
+                String ridKey = "" + rid.pageNo.pid + "," + rid.slotNo;
+
                 
-                if (!uniqueVectors.contains(vectorKey) && distance < range) {
-                    uniqueVectors.add(vectorKey);
+                if (!uniqueRID.contains(ridKey) && distance < range) {
+                    uniqueRID.add(ridKey);
                     distance_to_query.add(new AbstractMap.SimpleEntry<>(entry, distance));
                 }
+
+                
                 
             }
 
@@ -792,7 +810,8 @@ public class LSHFFile extends IndexFile
             RID rid = null;
             rid = ((LeafData) nearestEntry.data).getData();
             //rid.pageNo.pid + ", Slot: " + rid.slotNo
-            //System.out.println("✅ NN: " + nearestEntry.key +  " RID.pid: " + rid.pageNo.pid + " RID.slotNum: " + rid.slotNo + " | Distance: " + distance);
+            // + nearestEntry.key
+            //System.out.println("✅ NN: " +  " RID.pid: " + rid.pageNo.pid + " RID.slotNum: " + rid.slotNo + " | Distance: " + distance);
             returnValues[i] = nearestEntry;
             i++;
 
