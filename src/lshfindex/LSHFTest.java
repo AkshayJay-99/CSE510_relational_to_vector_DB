@@ -90,23 +90,48 @@ public class LSHFTest {
 
 
             SystemDefs sysdef = new SystemDefs("minibase.lshftest", 5000, 2000, "Clock");
-            LSHFFile lshf = new LSHFFile("myDatabase", 5, 10);
-            Random random = new Random();
+            LSHFFile lshf = new LSHFFile("myDatabase", 5, 1);
+            Random random = new Random(42);
 
             Vector100Dtype queryKey = null;
 
+            short[] center1 = new short[100]; 
+            for (int i = 0; i < 100; i++) {
+                center1[i] = 100;
+            }
+
+            short[] center2 = new short[100]; 
+            for (int i = 0; i < 100; i++) {
+                center2[i] = 200;
+            }
+
+            short[] center3 = new short[100]; 
+            for (int i = 0; i < 100; i++) {
+                center3[i] = 150;
+            }
+
+            short[] center4 = new short[100]; 
+            for (int i = 0; i < 100; i++) {
+                center4[i] = 130;
+            }
+
+
             // ✅ Step 1: Insert Sample Data
-            for (int i = 0; i < 300; i++) {
+            for (int i = 0; i < 100; i++) {
                 //System.out.println("Inserting vector: " + i);
                 short[] vec = new short[100];
                 for (int j = 0; j < 100; j++) {
-                    vec[j] = (short) random.nextInt(10000);
+                    //vec[j] = (short) random.nextInt(10000);
+                     int jitter = random.nextInt(15) - 2; 
+                     vec[j] = (short) (center1[i] + jitter);
                 }
                 Vector100Dtype key = new Vector100Dtype(vec);
 
                 queryKey = new Vector100Dtype(vec);
 
                 RID rid = new RID(); // Fake RID for testing
+
+                rid.slotNo = i;
 
                 Vector100DKey insert = new Vector100DKey(key);
 
@@ -115,28 +140,104 @@ public class LSHFTest {
                 
             }
 
+            for (int i = 0; i < 100; i++) {
+                //System.out.println("Inserting vector: " + i);
+                short[] vec = new short[100];
+                for (int j = 0; j < 100; j++) {
+                    //vec[j] = (short) random.nextInt(10000);
+                     int jitter = random.nextInt(15) - 2; 
+                     vec[j] = (short) (center2[i] + jitter);
+                }
+                Vector100Dtype key = new Vector100Dtype(vec);
+
+                queryKey = new Vector100Dtype(vec);
+
+                RID rid = new RID(); // Fake RID for testing
+
+                rid.slotNo = i + 100;
+
+                Vector100DKey insert = new Vector100DKey(key);
+
+                lshf.insert(insert, rid);
+
+                
+            }
+
+            for (int i = 0; i < 100; i++) {
+                //System.out.println("Inserting vector: " + i);
+                short[] vec = new short[100];
+                for (int j = 0; j < 100; j++) {
+                    //vec[j] = (short) random.nextInt(10000);
+                     int jitter = random.nextInt(15) - 2; 
+                     vec[j] = (short) (center3[i] + jitter);
+                }
+                Vector100Dtype key = new Vector100Dtype(vec);
+
+                queryKey = new Vector100Dtype(vec);
+
+                RID rid = new RID(); // Fake RID for testing
+
+                rid.slotNo = i + 200;
+
+                Vector100DKey insert = new Vector100DKey(key);
+
+                lshf.insert(insert, rid);
+
+                
+            }
+
+            for (int i = 0; i < 100; i++) {
+                //System.out.println("Inserting vector: " + i);
+                short[] vec = new short[100];
+                for (int j = 0; j < 100; j++) {
+                    //vec[j] = (short) random.nextInt(10000);
+                     int jitter = random.nextInt(15) - 2; 
+                     vec[j] = (short) (center4[i] + jitter);
+                }
+                Vector100Dtype key = new Vector100Dtype(vec);
+
+                //if(i == 95)
+                queryKey = new Vector100Dtype(vec);
+
+                RID rid = new RID(); // Fake RID for testing
+                rid.slotNo = i + 300;
+
+                Vector100DKey insert = new Vector100DKey(key);
+
+                lshf.insert(insert, rid);
+
+                
+            }
+
+
+
+
             //✅ Step 2: Scan and Print Tree Structure
             System.out.println("🔍 Printing Initial BTree Structure...");
-            LSHFFileScan scan = new LSHFFileScan(lshf.GetIndexLayer(1));  // Scanning first layer
-            scan.LSHFFileScan();
+            //LSHFFileScan scan = new LSHFFileScan(lshf.GetIndexLayer(1));  // Scanning first layer
+            //scan.LSHFFileScan();
             //scan.closeScan();
 
-            lshf.LSHFFileScan();
+            //lshf.LSHFFileScan();
 
             System.out.println();
             System.out.println("🔍 Finished printing structure...");
 
             System.out.println("Starting a NNSearch");
 
-            lshf.NN_Search(queryKey, 30);
+            lshf.NN_Search(queryKey, 25);
 
             System.out.println("Finishing a NNSearch");
 
             System.out.println("Starting a Range_Search");
 
-            lshf.Range_Search(queryKey, 38000);
+            lshf.Range_Search(queryKey, 100);
 
             System.out.println("Finishing a Range_Search");
+
+            System.out.println("Read a single file start ");
+            lshf.readSingleFile(queryKey);
+            System.out.println("Read a single file end ");
 
             // ✅ Step 3: Close and Reopen Database
             System.out.println();
