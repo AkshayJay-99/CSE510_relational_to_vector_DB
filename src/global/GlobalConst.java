@@ -3,15 +3,15 @@ package global;
 public interface GlobalConst {
 
   public static final int MINIBASE_MAXARRSIZE = 50;
-  public static final int NUMBUF = 8192;
+  public static final int NUMBUF = 16384;
 
   /** Size of page. */
-  public static final int MINIBASE_PAGESIZE = 8192;           // in bytes
+  public static final int MINIBASE_PAGESIZE = 16384;           // in bytes
 
   /** Size of each frame. */
-  public static final int MINIBASE_BUFFER_POOL_SIZE = 8192;   // in Frames
+  public static final int MINIBASE_BUFFER_POOL_SIZE = 16384;   // in Frames
 
-  public static final int MAX_SPACE = 8192;   // in Frames
+  public static final int MAX_SPACE = 16384;   // in Frames
   
   /**
    * in Pages => the DBMS Manager tells the DB how much disk 
