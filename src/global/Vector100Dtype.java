@@ -63,6 +63,19 @@ public class Vector100Dtype {
         return new Vector100Dtype(values);
     }
 
+    public static short[] fromByteArray1(byte[] data) throws IOException {
+        if (data.length != VECTOR_SIZE * 2) {
+            throw new IllegalArgumentException("Invalid byte array size for Vector100Dtype.");
+        }
+        ByteArrayInputStream byteStream = new ByteArrayInputStream(data);
+        DataInputStream inStream = new DataInputStream(byteStream);
+        short[] values = new short[VECTOR_SIZE];
+        for (int i = 0; i < VECTOR_SIZE; i++) {
+            values[i] = inStream.readShort();
+        }
+        return values;
+    }
+
     // Compute Euclidean Distance between two vectors
     public static double computeDistance(Vector100Dtype v1, Vector100Dtype v2) {
         double sum = 0;

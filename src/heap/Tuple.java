@@ -5,6 +5,7 @@ package heap;
 import global.*;
 import java.io.*;
 import java.lang.*;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 
@@ -310,7 +311,21 @@ public class Tuple implements GlobalConst{
     return Vector100Dtype.fromByteArray(vectorBytes);
 }
 
+public short[] get100DVectorFld1(int fldNo) throws IOException, FieldNumberOutOfBoundException {
+  if (fldNo < 1 || fldNo > fldCnt) {
+      throw new FieldNumberOutOfBoundException(null, "TUPLE:TUPLE_FLDNO_OUT_OF_BOUND");
+  }
   
+  int offset = fldOffset[fldNo - 1];
+  int size = Vector100Dtype.VECTOR_SIZE * 2; // Ensure we only read 200 bytes
+
+  if (offset + size > data.length) {
+      throw new IOException("Vector100D field data out of bounds.");
+  }
+
+  byte[] vectorBytes = Arrays.copyOfRange(data, offset, offset + size);
+  return Vector100Dtype.fromByteArray1(vectorBytes);
+}
   
 
   /**
@@ -597,6 +612,85 @@ public void setHdr (short numFlds,  AttrType types[], short strSizes[])
    System.out.println("]");
 
  }
+
+  public ArrayList<Object> copy(AttrType type[])
+ throws IOException, FieldNumberOutOfBoundException 
+{
+int i, val;
+float fval;
+String sval;
+ArrayList<Object> list = new ArrayList<>();
+// System.out.print("[");
+for (i=0; i< fldCnt-1; i++)
+{
+switch(type[i].attrType) {
+
+case AttrType.attrInteger:
+val = Convert.getIntValue(fldOffset[i], data);
+// 
+list.add(val);
+break;
+
+case AttrType.attrReal:
+fval = Convert.getFloValue(fldOffset[i], data);
+// System.out.print(fval);
+list.add(fval);
+break;
+
+case AttrType.attrString:
+sval = Convert.getStrValue(fldOffset[i], data,fldOffset[i+1] - fldOffset[i]);
+//System.out.print(sval);
+list.add(sval);
+break;
+case AttrType.attrVector100D:
+short[] vector = get100DVectorFld1(i + 1);
+// System.out.print(vectorToString(vector));
+// System.out.println(vector);
+list.add(Arrays.toString(vector));
+break;
+
+
+case AttrType.attrNull:
+case AttrType.attrSymbol:
+break;
+}
+} 
+
+switch(type[fldCnt-1].attrType) {
+
+case AttrType.attrInteger:
+val = Convert.getIntValue(fldOffset[i], data);
+// System.out.print(val);
+list.add(val);
+break;
+
+case AttrType.attrReal:
+fval = Convert.getFloValue(fldOffset[i], data);
+// System.out.print(fval);
+list.add(fval);
+break;
+
+case AttrType.attrString:
+sval = Convert.getStrValue(fldOffset[i], data,fldOffset[i+1] - fldOffset[i]);
+// System.out.print(sval);
+list.add(sval);
+break;
+case AttrType.attrVector100D:
+//  Vector100Dtype vector = get100DVectorFld(fldCnt);
+short[] vector = get100DVectorFld1(fldCnt);   
+//  System.out.print(vectorToString(vector));
+// System.out.println(Arrays.toString(vector));
+list.add(Arrays.toString(vector));
+break;
+
+case AttrType.attrNull:
+case AttrType.attrSymbol:
+break;
+}
+// System.out.println("]");
+return list;
+}
+
 
  private String vectorToString(Vector100Dtype vector) {
   if (vector == null) {
