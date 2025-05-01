@@ -246,8 +246,8 @@ public class LSHFFile extends IndexFile
                 bucketKey += ("_" + hashVal);
                 //System.out.println("We are hashing into the " + hashVal + " In layer: " + i);
                 //storeInHeapFile(hashVal, layer, key, rid);
-                
-                
+        
+
                 btreeIndex[layer].insert( new StringKey(bucketKey), rid);
 
                 // if (j < hashes - 1) {
@@ -726,7 +726,7 @@ public class LSHFFile extends IndexFile
                 int hash_value = hash_function(projections[i][j-1], convertShortToDouble(key.getValues()), b_values[i][j-1], width);
                 bucketKey += ("_" + hash_value);
                 bucketKeys[i][j] = bucketKey;
-
+                
                 //System.out.println(bucketKeys[i][j]);
             }
 
@@ -792,7 +792,7 @@ public class LSHFFile extends IndexFile
                 nearestNeighbors = scan.LSHFFileScan();
             }
             System.out.println();
-            System.out.println("Nearest Neighbors: " + nearestNeighbors.size());
+             System.out.println("Nearest Neighbors: " + nearestNeighbors.size());
             
 
             for(int j = 0; j < nearestNeighbors.size(); j++)
@@ -834,8 +834,14 @@ public class LSHFFile extends IndexFile
         if(k != 0)
         {
             ArrayList<AbstractMap.SimpleEntry<KeyDataEntry, Double>> topKNeighbors = new ArrayList<>(distance_to_query.subList(0, Math.min(k, distance_to_query.size())));
-            System.out.println("How many values we have: " + topKNeighbors.size());
-            KeyDataEntry[] returnValues  = new KeyDataEntry[k];
+            //System.out.println("How many values we have: " + topKNeighbors.size());
+            KeyDataEntry[] returnValues;
+            if(k > topKNeighbors.size())
+                returnValues = new KeyDataEntry[topKNeighbors.size()];
+            else
+                returnValues  = new KeyDataEntry[k];
+
+            
             int i = 0;
             for (AbstractMap.SimpleEntry<KeyDataEntry, Double> pair : topKNeighbors) {
                 KeyDataEntry nearestEntry = pair.getKey();
@@ -850,6 +856,8 @@ public class LSHFFile extends IndexFile
                 i++;
 
             }
+            System.out.println();
+            System.out.println("Nearest Neighbors: " + topKNeighbors.size());
 
             return returnValues; 
         }
@@ -870,6 +878,9 @@ public class LSHFFile extends IndexFile
                 i++;
 
             }
+
+            System.out.println();
+            System.out.println("Nearest Neighbors: " + distance_to_query.size());
 
             return returnValues; 
         }

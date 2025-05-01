@@ -39,8 +39,8 @@
  
    //private Set<Integer> leafPageIds = new HashSet<>();
  
- 
- // for debug
+   
+   // for debug
 	 private static HashMap<Integer, Integer> pinCountMap = new HashMap<>();
    
    
@@ -149,7 +149,7 @@
 	 { 
 	   try{
 		 
-		 SystemDefs.JavabaseBM.unpinPage(pageno, false /* = not DIRTY */);    
+		 SystemDefs.JavabaseBM.unpinPage(pageno, true /* = not DIRTY */);    
 		 
 		 pinCountMap.put(pageno.pid, pinCountMap.getOrDefault(pageno.pid, 0) - 1);
  
