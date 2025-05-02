@@ -6,6 +6,8 @@
 package lshfindex;
 import global.*;
 
+import java.util.Arrays;
+
 /** KeyDataEntry: define (key, data) pair.
  */
 public class KeyDataEntry {
@@ -106,6 +108,13 @@ public class KeyDataEntry {
       if ( key instanceof IntegerKey )
          st1= ((IntegerKey)key).getKey().equals
                   (((IntegerKey)entry.key).getKey());
+      else
+      if( key instanceof Vector100DKey )
+      { 
+            short[] a = ((Vector100DKey)this.key).getKey().getValues();
+            short[] b = ((Vector100DKey)entry.key).getKey().getValues();
+            st1 = java.util.Arrays.equals(a, b);
+      }
       else 
          st1= ((StringKey)key).getKey().equals
                   (((StringKey)entry.key).getKey());
