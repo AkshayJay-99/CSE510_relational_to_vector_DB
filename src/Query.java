@@ -455,9 +455,26 @@ public class Query {
             String useIndexOption = parts[3].trim();
             // 🔹 Read the target vector from the file
             Vector100Dtype targetVector = readVectorFromFile(targetVectorFile);
+
+            Heapfile index_heapfile = new Heapfile(relationName + "indexes");
+            Scan scan = index_heapfile.openScan();
+            //tuple;
+            Tuple tuple;
+            RID rid = new RID();
+            while((tuple = scan.getNext(rid)) != null)
+            {
+                tuple.setHdr((short) 1, new AttrType[]{new AttrType(AttrType.attrString)}, new short[]{30});
+                String index_String = tuple.getStrFld(1);
+                String[] index_parts = index_String.split("_");
+                System.out.println("Index String: " + index_String);
+                if (queryField == Integer.parseInt(index_parts[1])) {
+                    h = Integer.parseInt(index_parts[3]);
+                    L = Integer.parseInt(index_parts[2]);           
+                }
+            }
+
             int noOutFlds = 0;
             FldSpec[] projlist = null;
-
             if (parts.length == 5 && parts[4].trim().equals("*")) {
                 noOutFlds = numAttributes;
                 projlist = new FldSpec[noOutFlds];
@@ -476,8 +493,7 @@ public class Query {
             System.out.println("Processing Range Query...");
             System.out.println("Query Field: " + queryField);
             System.out.println("Target Vector File: " + targetVectorFile);
-            System.out.println("Distance Threshold: " + distanceThreshold);
-
+            System.out.println("Range: " + distanceThreshold);
 
             List<Tuple> results = new ArrayList<>();
             AttrType[] out_types = new AttrType[noOutFlds];
@@ -485,7 +501,7 @@ public class Query {
             if (useIndexOption.equalsIgnoreCase("H")) {
                 System.out.println("Using LSH-Forest for range query...");
                 try {
-                    rs = new RSIndexScan(new IndexType(IndexType.LSHF_Index), relationName+".in", "databaseName"+'_'+queryField+'_'+h+'_'+L, schema, getStringSizes(schema), numAttributes, noOutFlds,  projlist, null, queryField, targetVector, distanceThreshold);
+                    rs = new RSIndexScan(new IndexType(IndexType.LSHF_Index), relationName+".in", relationName+ "_" + queryField+'_'+L+'_'+h, schema, getStringSizes(schema), numAttributes, noOutFlds,  projlist, null, queryField, targetVector, distanceThreshold);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -496,7 +512,7 @@ public class Query {
                 order[0] = new TupleOrder(TupleOrder.Ascending);
                 order[1] = new TupleOrder(TupleOrder.Descending);
                 try {
-                    rs = new RSIndexScan(new IndexType(IndexType.None), "data_heap.in", "", schema, getStringSizes(schema), numAttributes, noOutFlds,  projlist, null, queryField, targetVector, distanceThreshold);
+                    rs = new RSIndexScan(new IndexType(IndexType.None), relationName+".in", "", schema, getStringSizes(schema), numAttributes, noOutFlds,  projlist, null, queryField, targetVector, distanceThreshold);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -581,7 +597,6 @@ public class Query {
             }
             else {
                 System.out.println("Performing full heapfile scan for nearest neighbors...");
-                System.out.println("Performing full heapfile scan for range query...");
                 TupleOrder[] order = new TupleOrder[2];
                 order[0] = new TupleOrder(TupleOrder.Ascending);
                 order[1] = new TupleOrder(TupleOrder.Descending);

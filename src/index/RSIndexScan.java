@@ -58,11 +58,11 @@ public class RSIndexScan {
 
                 AttrType[] out_types = new AttrType[noOutFlds];
                 String[] parts = indName.split("_");  
-                int h = Integer.parseInt(parts[2]);  // Extract h value
-                int L = Integer.parseInt(parts[3]);  // Extract L value              
+                int L = Integer.parseInt(parts[2]);  // Extract L value            
+                int h = Integer.parseInt(parts[3]);  // Extract h value            
                 LSHFFile lshf = new LSHFFile(indName, h, L);
                 KeyDataEntry[] rs_results = lshf.Range_Search(query, distance);
-                Heapfile heapfile = new Heapfile("data_heap.in");
+                Heapfile heapfile = new Heapfile(relName);
                 System.out.println();
                 System.out.println("Disk pages read after LSH NN Search: " + PCounter.rcounter);
                 System.out.println("Disk pages written after LSH NN Search: "+PCounter.wcounter);
