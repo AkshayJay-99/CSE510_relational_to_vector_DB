@@ -62,7 +62,7 @@ public class NNIndexScan {
                 int L = Integer.parseInt(parts[3]);  // Extract L value              
                 LSHFFile lshf = new LSHFFile(indName, h, L);
                 KeyDataEntry[] nn_results = lshf.NN_Search(query, count);
-                Heapfile heapfile = new Heapfile("data_heap.in");
+                Heapfile heapfile = new Heapfile(relName);
 
                 System.out.println();
                 System.out.println("Disk pages read after LSH NN Search: " + PCounter.rcounter);

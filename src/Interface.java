@@ -159,6 +159,8 @@ public class Interface {
     public static void batchCreate(String dataFile, String relName) {
         System.out.println("Creating table '" + relName + "' from file: " + dataFile + " in database: " + currentDatabaseName);
 
+        int h = 0; // Number of hash functions per layer -- initialized to 0
+        int L = 0; // Number of layers
         try {
 
             BufferedReader reader = new BufferedReader(new FileReader(dataFile));
@@ -178,16 +180,17 @@ public class Interface {
                     default: throw new IllegalArgumentException("Unknown attribute type: " + typeCode);
                 }
             }
+            attr_char +=(char) (h+ '0');
+            attr_char +=(char) (L+ '0');
             System.out.println(attr_char);
-            
             Heapfile heapfile_sc = new Heapfile("sc_"+relName+".in");
-            heapfile_sc.deleteFile();
-            heapfile_sc = new Heapfile("sc_"+relName+".in");
             Tuple sc_tuple = new Tuple();
             sc_tuple.setHdr((short) 1, new AttrType[]{new AttrType(AttrType.attrString)}, new short[]{30});
             sc_tuple.setStrFld(1, attr_char);  
             RID sc_rid = heapfile_sc.insertRecord(sc_tuple.getTupleByteArray());
             System.out.println("Schema stored with RID: Page " + sc_rid.pageNo.pid + ", Slot " + sc_rid.slotNo);
+
+            // 🔹 Step 4: Create Heapfile
             Heapfile heapfile = new Heapfile(relName+".in");
             heapfile.deleteFile();
             heapfile = new Heapfile(relName+".in");
@@ -231,21 +234,22 @@ public class Interface {
                 }
             
                 // Insert tuple into heap file
-                //System.out.println(tuple.get100DVectorFld(2));
-                RID recordID =  heapfile.insertRecord(tuple.getTupleByteArray()); 
-                System.out.println("Inserted tuple with RID: Page " + recordID.pageNo.pid + ", Slot " + recordID.slotNo);
+                RID recordID =  heapfile.insertRecord(tuple.getTupleByteArray());
             }
+
             reader.close();
+            //System.out.println("Batch Insertion Complete!");
             flushPages();
-        }
-        catch (Exception e) {
-            System.err.println("Error creating table: " + e.getMessage());
+            
+            // Optionally, here's how you could shut down the system entirely, which also ensures data is saved
+            // 🔹 Step 6: Output disk usage stats (added here!)
+            System.out.println("Disk pages read: " + PCounter.rcounter);
+            System.out.println("Disk pages written: " + PCounter.wcounter);
+
+        } catch (Exception e) {
             e.printStackTrace();
         }
-
-
     }
-
     public static void createIndex(String relName, int columnId, int L, int h) {
         System.out.println("[Creating index on " + relName + ", column " + columnId +
                 ", L=" + L + ", h=" + h + " in database: " + currentDatabaseName);
@@ -268,13 +272,7 @@ public class Interface {
         System.out.println("Running external Query.java program...");
 
         try {
-            ProcessBuilder pb = new ProcessBuilder(
-                    "java", "Query", rel1, rel2, qsName, String.valueOf(numBuf), currentDatabaseName
-            );
-
-            pb.inheritIO(); // Stream output of Query.java directly to console
-            Process process = pb.start();
-            process.waitFor(); // Block until Query.java completes
+            Query.main(rel1, rel2, qsName, numBuf);
 
             System.out.println("Query completed.");
         } catch (Exception e) {
