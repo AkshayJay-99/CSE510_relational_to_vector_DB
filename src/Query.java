@@ -25,46 +25,38 @@ public class Query {
             //SystemDefs sysDef = new SystemDefs(dbPath, 0, bufferPages, "Clock");
 
             // Load schema from sc_heap.in
-            FileScan schemaScan = new FileScan(
-                    "sc_"+relation1Name+".in",
-                    new AttrType[]{new AttrType(AttrType.attrString)},
-                    new short[]{30},
-                    (short) 1,
-                    1,
-                    new FldSpec[]{new FldSpec(new RelSpec(RelSpec.outer), 1)},
-                    null
-            );
-            Tuple schemaTuple = schemaScan.get_next();
-            schemaScan.close();
-            if (schemaTuple == null) {
-                System.out.println("Error: Schema not found");
-                return;
-            }
+            Heapfile heapfile = new Heapfile("sc_"+relation1Name+".in");
+            Scan scan = heapfile.openScan();
+            Tuple tuple;
+            RID rid = new RID();
+            tuple = scan.getNext(rid);
+            tuple.setHdr((short) 1, new AttrType[]{new AttrType(AttrType.attrString)}, new short[]{30});
+            tuple.print(new AttrType[]{new AttrType(AttrType.attrString)});
+    
+            String attributes = tuple.getStrFld(1);
+            char[] attr = attributes.toCharArray();
+            AttrType[] schema = new AttrType[attr.length];
+            int numAttributes = attributes.length();
 
-            String schemaString = schemaTuple.getStrFld(1);
-            int numAttributes = schemaString.length() - 2;
-            AttrType[] schema = new AttrType[numAttributes];
-            for (int i = 0; i < numAttributes; i++) {
-                int typeCode = schemaString.charAt(i) - '0';
+    
+            for(int i = 0; i < attr.length; i++)
+            {
+                int typeCode = Integer.parseInt(String.valueOf(attr[i]));
                 switch (typeCode) {
-                    case 1:
-                        schema[i] = new AttrType(AttrType.attrInteger);
-                        break;
-                    case 2:
-                        schema[i] = new AttrType(AttrType.attrReal);
-                        break;
-                    case 3:
-                        schema[i] = new AttrType(AttrType.attrString);
-                        break;
-                    case 4:
-                        schema[i] = new AttrType(AttrType.attrVector100D);
-                        break;
-                    default:
-                        throw new IllegalArgumentException("Unknown attribute type: " + typeCode);
+                    case 1: schema[i] = new AttrType(AttrType.attrInteger); break;
+                    case 2: schema[i] = new AttrType(AttrType.attrReal); break;
+                    case 3: schema[i] = new AttrType(AttrType.attrString); break;
+                    case 4: schema[i] = new AttrType(AttrType.attrVector100D); break;
+                    default: throw new IllegalArgumentException("Unknown attribute type: " + typeCode);
                 }
+    
+                //System.out.println("Schema: "+schema[i]);
             }
-            int hashFunctions = schemaString.charAt(schemaString.length() - 2) - '0';
-            int indexLayers = schemaString.charAt(schemaString.length() - 1) - '0';
+    
+            scan.closescan();
+            
+            int hashFunctions = 0;
+            int indexLayers = 0;
 
             // Read query specification
             BufferedReader reader = new BufferedReader(new FileReader(queryFileName));

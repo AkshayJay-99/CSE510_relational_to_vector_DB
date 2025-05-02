@@ -1,17 +1,17 @@
 import diskmgr.DB;
 import diskmgr.PCounter;
-import global.AttrType;
-import global.RID;
-import global.SystemDefs;
-import global.Vector100Dtype;
-import heap.Heapfile;
-import heap.Scan;
-import heap.Tuple;
+import heap.*;
+import btree.*;
+import lshfindex.*;
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.io.IOException;
 import java.util.Arrays;
 import lshfindex.*;
 import java.util.Scanner;
+import global.*;
+
+
 
 public class Interface {
 
@@ -54,6 +54,9 @@ public class Interface {
                         break;
 
                     case "batchcreate":
+                        PCounter.rcounter = 0;
+                        PCounter.wcounter = 0;
+                        
                         if (requireDatabaseContext() && tokens.length == 3) {
                             batchCreate(tokens[1], tokens[2]);
                         } else {
@@ -159,8 +162,6 @@ public class Interface {
     public static void batchCreate(String dataFile, String relName) {
         System.out.println("Creating table '" + relName + "' from file: " + dataFile + " in database: " + currentDatabaseName);
 
-        int h = 0; // Number of hash functions per layer -- initialized to 0
-        int L = 0; // Number of layers
         try {
 
             BufferedReader reader = new BufferedReader(new FileReader(dataFile));
@@ -180,12 +181,15 @@ public class Interface {
                     default: throw new IllegalArgumentException("Unknown attribute type: " + typeCode);
                 }
             }
-            attr_char +=(char) (h+ '0');
-            attr_char +=(char) (L+ '0');
+
             System.out.println(attr_char);
             Heapfile heapfile_sc = new Heapfile("sc_"+relName+".in");
             heapfile_sc.deleteFile();
             heapfile_sc = new Heapfile("sc_"+relName+".in");
+
+            Heapfile index_file = new Heapfile(relName + "indexes");
+            index_file.deleteFile();
+            index_file = new Heapfile(relName + "indexes");
 
             Tuple sc_tuple = new Tuple();
             sc_tuple.setHdr((short) 1, new AttrType[]{new AttrType(AttrType.attrString)}, new short[]{30});
@@ -237,7 +241,7 @@ public class Interface {
                 }
             
                 // Insert tuple into heap file
-                RID recordID =  heapfile.insertRecord(tuple.getTupleByteArray());
+                RID recordID =  heapfile.insertRecord(tuple.getTupleByteArray()); 
             }
 
             reader.close();
@@ -253,21 +257,176 @@ public class Interface {
             e.printStackTrace();
         }
     }
-    public static void createIndex(String relName, int columnId, int L, int h) {
+
+    public static void createIndex(String relName, int columnId, int L, int h)
+    throws HFException, InvalidTupleSizeException, IOException, HFBufMgrException, InvalidTypeException, FieldNumberOutOfBoundException, HFDiskMgrException, Exception, btree.GetFileEntryException, btree.KeyTooLongException
+    {
         System.out.println("[Creating index on " + relName + ", column " + columnId +
                 ", L=" + L + ", h=" + h + " in database: " + currentDatabaseName);
-        // TODO: Implement index creation logic
+
+        Heapfile heapfile = new Heapfile("sc_"+relName+".in");
+        Scan scan = heapfile.openScan();
+        Tuple tuple;
+        RID rid = new RID();
+        tuple = scan.getNext(rid);
+        tuple.setHdr((short) 1, new AttrType[]{new AttrType(AttrType.attrString)}, new short[]{30});
+        tuple.print(new AttrType[]{new AttrType(AttrType.attrString)});
+
+        String attributes = tuple.getStrFld(1);
+        char[] attr = attributes.toCharArray();
+        AttrType[] schema = new AttrType[attr.length];
+
+        for(int i = 0; i < attr.length; i++)
+        {
+            int typeCode = Integer.parseInt(String.valueOf(attr[i]));
+            switch (typeCode) {
+                case 1: schema[i] = new AttrType(AttrType.attrInteger); break;
+                case 2: schema[i] = new AttrType(AttrType.attrReal); break;
+                case 3: schema[i] = new AttrType(AttrType.attrString); break;
+                case 4: schema[i] = new AttrType(AttrType.attrVector100D); break;
+                default: throw new IllegalArgumentException("Unknown attribute type: " + typeCode);
+            }
+
+            //System.out.println("Schema: "+schema[i]);
+        }
+
+        scan.closescan();
+
+        String newIndexinfo = relName + "_" + columnId + "_" + L + "_"+ h;
+        System.out.println("storing values within: " + (relName + "indexes"));
+        heapfile = new Heapfile(relName + "indexes");
+
+        PageId check_pid = SystemDefs.JavabaseDB.get_file_entry(relName + "indexes");
+
+        System.out.println("Did we did we find anything for the pid: " + check_pid);
+
+        scan = heapfile.openScan();
+        //tuple;
+        rid = new RID();
+
+
+        while((tuple = scan.getNext(rid)) != null)
+        {
+
+            tuple.setHdr((short) 1, new AttrType[]{new AttrType(AttrType.attrString)}, new short[]{30});
+            String potential_match = tuple.getStrFld(1);
+            //
+            //System.out.println("potential_match: " + potential_match +  " vs newIndexinfo: " + newIndexinfo);
+            if(potential_match.equals(newIndexinfo))
+            {
+                System.out.println("Index on column: " + columnId + " has already been created for relation: " + relName + " with L: " + L + " and h: " + h);
+                scan.closescan();
+                return;
+            }
+
+
+            // if(tuple != null)
+            // {
+            //     
+            // }
+        }
+
+
+
+        scan.closescan();
+
+        Tuple index_tuple = new Tuple();
+        index_tuple.setHdr((short) 1, new AttrType[]{new AttrType(AttrType.attrString)}, new short[]{30});
+        index_tuple.setStrFld(1, newIndexinfo);  
+        System.out.println("newIndexinfo: " + newIndexinfo);
+        RID index_rid = heapfile.insertRecord(index_tuple.getTupleByteArray());
+
+
+
+
+        heapfile = new Heapfile(relName+".in");
+        scan = heapfile.openScan();
+        //Tuple tuple;
+        rid = new RID();
+
+        LSHFFile lshf = null;
+        BTreeFile btree = null;
+
+        if(schema[columnId].attrType == AttrType.attrVector100D)
+            lshf = new LSHFFile((currentDatabaseName + "_" + newIndexinfo), h, L);
+
+        if(schema[columnId].attrType == AttrType.attrReal)
+        {
+            String indexName = relName + "_" + columnId;
+            int keySize = 4;
+            int keyType = AttrType.attrInteger;
+            int deleteFashion = lshfindex.DeleteFashion.FULL_DELETE;
+            btree = new BTreeFile(indexName, keyType, keySize, deleteFashion);
+        }
+            
+
+
+        while ((tuple = scan.getNext(rid)) != null) {
+            tuple.setHdr((short) schema.length, schema, getStringSizes(schema)); // Set header before printing
+
+            //tuple.print(schema); // ✅ Corrected print statement
+
+            //System.out.println(schema[columnId]);
+
+            switch(schema[columnId].attrType)
+            {
+                case AttrType.attrInteger: 
+                    System.out.println("We have a integer ");
+                break;
+
+                case AttrType.attrReal: 
+                    float val = tuple.getFloFld(columnId + 1);
+                    //System.out.println("We have a Real num: " + val);
+                    
+                    btree.IntegerKey key = new btree.IntegerKey((int) val);
+                    btree.insert(key, rid);
+                    
+                break;
+
+                case AttrType.attrString: 
+                    System.out.println("We have a string");
+                break;
+
+                case AttrType.attrVector100D: 
+                    //System.out.println("We have a 100DVector");
+                    Vector100Dtype currVector = tuple.get100DVectorFld(columnId + 1);
+                    Vector100DKey insert = new Vector100DKey(currVector);
+                    lshf.insert(insert, rid);
+                break;
+
+            }
+
+            //System.out.println(tuple.get100DVectorFld(attributeToDel));
+        }
+
+        if(schema[columnId].attrType == AttrType.attrVector100D)
+            lshf.close();
+        if(schema[columnId].attrType == AttrType.attrReal)
+        {
+            btree.close();
+        }
+
+        scan.closescan();
+        flushPages();
+        //System.out.println("We have the attributes: " + attributes);
     }
 
     public static void batchInsert(String updateFile, String relName) {
         System.out.println("Inserting data into " + relName + " from file: " + updateFile +
                 " in database: " + currentDatabaseName);
+
+        //BatchInsert(dbName, dataFileName, relName);
+        BatchInsert.BatchInsert(currentDatabaseName, updateFile, relName);
+
+        
         // TODO: Implement batch insert logic
     }
 
     public static void batchDelete(String updateFile, String relName) {
         System.out.println("Deleting from " + relName + " using: " + updateFile +
                 " in database: " + currentDatabaseName);
+        //BatchDelete(dbName, dataFileName, relName);
+        BatchDelete.BatchDelete(currentDatabaseName, updateFile, relName);
         // TODO: Implement batch delete logic
     }
 
