@@ -184,6 +184,9 @@ public class Interface {
             attr_char +=(char) (L+ '0');
             System.out.println(attr_char);
             Heapfile heapfile_sc = new Heapfile("sc_"+relName+".in");
+            heapfile_sc.deleteFile();
+            heapfile_sc = new Heapfile("sc_"+relName+".in");
+
             Tuple sc_tuple = new Tuple();
             sc_tuple.setHdr((short) 1, new AttrType[]{new AttrType(AttrType.attrString)}, new short[]{30});
             sc_tuple.setStrFld(1, attr_char);  
