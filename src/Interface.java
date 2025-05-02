@@ -356,6 +356,7 @@ public class Interface {
             int keySize = 4;
             int keyType = AttrType.attrInteger;
             int deleteFashion = lshfindex.DeleteFashion.FULL_DELETE;
+            System.out.println("Creating BTree index with name: " + indexName);
             btree = new BTreeFile(indexName, keyType, keySize, deleteFashion);
         }
             

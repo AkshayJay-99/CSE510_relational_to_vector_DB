@@ -154,103 +154,202 @@ public class Query {
     }
 
 
-    // ---- Filter Query ----
     private static void processFilterQuery(
-            String relationName,
-            String querySpecification,
-            AttrType[] schema,
-            short stringFieldSizes) {
-        try {
-            // 1. Extract everything inside the parentheses
-            String inner = querySpecification
-                    .substring(querySpecification.indexOf('(') + 1,
-                            querySpecification.lastIndexOf(')'));
-            String[] parts = inner.split(",");
+        String relationName,
+        String querySpecification,
+        AttrType[] schema,
+        short numAttributes) {
+    try {
+        // 1. Parse “Filter(QA, T, K, I, …)”
+        String[] parts = querySpecification.replace("Filter(", "").replace(")", "").split(",");
+        int queryFieldIndex = Integer.parseInt(parts[0].trim());
+        int literalValue = Integer.parseInt(parts[1].trim());
+        //int k = Integer.parseInt(parts[2].trim());
+        String indexOption = parts[2].trim();
 
-            // 2. Parse the fixed parameters
-            int    queryFieldIndex = Integer.parseInt(parts[0].trim());
-            String literalValue    = parts[1].trim();
-            // parts[2] is the unused K placeholder
-            String indexOption     = parts[3].trim();
+        System.out.println("Processing Filter Query...");
+        System.out.println("Query Field: " + queryFieldIndex);
+        System.out.println("Target Value: " + literalValue);
+        System.out.println("Index Option: " + indexOption);
+        String dataFile  = relationName + ".in";
+        String indexFile = relationName + "_" + queryFieldIndex;
 
-            // 3. Build the list of output‐fields
-            List<Integer> outputFields = new ArrayList<>();
-            if (parts.length == 5 && parts[4].trim().equals("*")) {
-                outputFields.add(-1);
-            } else {
-                for (int i = 4; i < parts.length; i++) {
-                    outputFields.add(Integer.parseInt(parts[i].trim()));
-                }
+
+        FldSpec[] projlist = null;
+        int noOutFlds = 0;
+        if (parts.length == 4 && parts[3].trim().equals("*")) {
+            noOutFlds = numAttributes;
+            projlist = new FldSpec[noOutFlds];
+            RelSpec rel = new RelSpec(RelSpec.outer);
+            for (int i = 0; i < noOutFlds; i++) {
+                projlist[i] = new FldSpec(rel, i + 1);
             }
-
-            // 4. Build the FldSpec[] and compute outCount
-            FldSpec[] projSpecs;
-            short     outCount;
-            if (outputFields.size() == 1 && outputFields.get(0) == -1) {
-                projSpecs = new FldSpec[schema.length];
-                for (int i = 0; i < schema.length; i++) {
-                    projSpecs[i] = new FldSpec(new RelSpec(RelSpec.outer), i + 1);
-                }
-                outCount = (short) schema.length;
-            } else {
-                projSpecs = new FldSpec[outputFields.size()];
-                for (int i = 0; i < outputFields.size(); i++) {
-                    projSpecs[i] = new FldSpec(
-                            new RelSpec(RelSpec.outer),
-                            outputFields.get(i)
-                    );
-                }
-                outCount = (short) outputFields.size();
-            }
-
-            // 5. Decide on index vs full scan
-            if (indexOption.equalsIgnoreCase("H")) {
-                System.out.println("Index option 'H' selected, but filter uses full scan only.");
-            }
-
-            // 6. Open FileScan on the heap file
-            FileScan scan = new FileScan(
-                     "data_heap.in",
-                    schema,
-                    getStringSizes(schema),
-                    stringFieldSizes,
-                    stringFieldSizes,
-                    projSpecs,
-                    null
-            );
-
-            // 7. Iterate and apply the filter predicate
-            Tuple tuple;
-            while ((tuple = scan.get_next()) != null) {
-                boolean matches = false;
-                AttrType at = schema[queryFieldIndex - 1];
-                switch (at.attrType) {
-                    case AttrType.attrInteger:
-                        matches = (tuple.getIntFld(queryFieldIndex)
-                                == Integer.parseInt(literalValue));
-                        break;
-                    case AttrType.attrReal:
-                        matches = (tuple.getFloFld(queryFieldIndex)
-                                == Float.parseFloat(literalValue));
-                        break;
-                    case AttrType.attrString:
-                        matches = tuple.getStrFld(queryFieldIndex)
-                                .equals(literalValue);
-                        break;
-                    default:
-                        throw new IllegalArgumentException(
-                                "Cannot filter on attribute type: " + at.attrType);
-                }
-                if (matches) {
-                    printTupleProjection(tuple, schema, outputFields);
-                }
-            }
-            scan.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
+        } else {
+            noOutFlds = parts.length - 3;
+            projlist = new FldSpec[noOutFlds];
+            RelSpec rel = new RelSpec(RelSpec.outer);
+            for (int i = 0; i < noOutFlds; i++) {
+                projlist[i] = new FldSpec(rel, Integer.parseInt(parts[3 + i].trim()));
+            }                
         }
+
+
+
+        AttrType[] out_types = new AttrType[noOutFlds];
+        for (int i = 0; i < noOutFlds; i++) {
+            out_types[i] = schema[projlist[i].offset - 1];
+        }
+
+        System.out.println("Index File: " + indexFile);
+        System.out.println("Data File: " + dataFile);
+
+        if (indexOption.equalsIgnoreCase("H")) {
+            System.out.println("Using B+Tree index on field " + queryFieldIndex);
+
+            CondExpr[] filterExpr = new CondExpr[3]; 
+            filterExpr[0] = new CondExpr();
+            filterExpr[0].op = new AttrOperator(AttrOperator.aopGE);
+            filterExpr[0].type1 = new AttrType(AttrType.attrSymbol);
+            filterExpr[0].type2 = new AttrType(AttrType.attrInteger);
+            filterExpr[0].operand1.symbol = new FldSpec(new RelSpec(RelSpec.outer), queryFieldIndex);
+            filterExpr[0].operand2.integer = literalValue;
+            filterExpr[1] = new CondExpr();
+            filterExpr[1].op = new AttrOperator(AttrOperator.aopLE);
+            filterExpr[1].type2 = new AttrType(AttrType.attrSymbol);
+            filterExpr[1].type1 = new AttrType(AttrType.attrInteger);
+            filterExpr[1].operand2.symbol = new FldSpec(new RelSpec(RelSpec.outer), queryFieldIndex);
+            filterExpr[1].operand1.integer = literalValue;
+            filterExpr[2] = null;
+
+            IndexScan iscan = null;
+            try {
+              iscan = new IndexScan(new IndexType(IndexType.B_Index), dataFile, indexFile, schema, getStringSizes(schema), numAttributes, noOutFlds, projlist, filterExpr, queryFieldIndex, false);
+            }
+            catch (Exception e) {
+              e.printStackTrace();
+            }
+            Tuple t = null;
+            try {
+                t = iscan.get_next();
+              }
+              catch (Exception e) {
+                e.printStackTrace(); 
+              }
+            while (t != null) {
+                try {
+                    t.print(out_types);
+                    t = iscan.get_next();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                
+            }
+            
+            iscan.close();
+        } else {
+            System.out.println("Performing full heapfile scan");
+
+            CondExpr[] filterExpr = new CondExpr[2]; 
+            filterExpr[0] = new CondExpr();
+            filterExpr[0].op = new AttrOperator(AttrOperator.aopEQ);
+            filterExpr[0].type1 = new AttrType(AttrType.attrSymbol);
+            filterExpr[0].type2 = new AttrType(AttrType.attrInteger);
+            filterExpr[0].operand1.symbol = new FldSpec(new RelSpec(RelSpec.outer), queryFieldIndex);
+            filterExpr[0].operand2.integer = literalValue;
+            filterExpr[1] = null;
+
+            FileScan fscan = null;
+            try {
+                fscan = new FileScan(dataFile, schema, getStringSizes(schema), (short) numAttributes, noOutFlds, projlist, null);
+            }
+            catch (Exception e) {
+              e.printStackTrace();
+            }
+            Tuple t = null;
+            try {
+                t = fscan.get_next();
+            }
+              catch (Exception e) {
+                e.printStackTrace(); 
+              }
+            while (t != null) {
+                try {
+                    if (t.getFloFld(queryFieldIndex) == literalValue) {
+                        t.print(out_types);
+                    }
+                    t = fscan.get_next();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                
+            }
+            
+            fscan.close();
+        }
+
+        // RHS depends on the field’s type:
+        // switch (schema[queryFieldIndex - 1].attrType) {
+        //     case AttrType.attrInteger:
+        //         filterExpr[0].type2              = new AttrType(AttrType.attrInteger);
+        //         filterExpr[0].operand2.integer   = Integer.parseInt(literalValue);
+        //         break;
+        //     case AttrType.attrReal:
+        //         filterExpr[0].type2            = new AttrType(AttrType.attrReal);
+        //         filterExpr[0].operand2.real    = Float.parseFloat(literalValue);
+        //         break;
+        //     case AttrType.attrString:
+        //         filterExpr[0].type2             = new AttrType(AttrType.attrString);
+        //         filterExpr[0].operand2.string   = literalValue;
+        //         break;
+        //     default:
+        //         throw new IllegalArgumentException("Unsupported filter type");
+        // }
+        // filterExpr[0].next = null;
+        // filterExpr[1]     = null;
+
+        // // 5. Choose between B+Tree index scan or full FileScan
+        // String dataFile  = relationName + "_heap.in";
+        // String indexFile = relationName + "_" + queryFieldIndex;
+        // iterator.Iterator scan;
+        // if (indexOption.equalsIgnoreCase("H")) {
+        //     System.out.println("Using B+Tree index on field " + queryFieldIndex);
+        //     scan = new IndexScan(
+        //             new IndexType(IndexType.B_Index),
+        //             dataFile,
+        //             indexFile,
+        //             schema,
+        //             getStringSizes(schema),
+        //             numAttributes,
+        //             outputCount,
+        //             projectionSpec,
+        //             filterExpr,           // apply predicate in index scan
+        //             queryFieldIndex,
+        //             true                  // <-- boolean flag, not a KeyClass
+        //     );
+        // } else {
+        //     System.out.println("Performing full heapfile scan");
+        //     scan = new FileScan(
+        //             dataFile,
+        //             schema,
+        //             getStringSizes(schema),
+        //             numAttributes,
+        //             numAttributes,
+        //             projectionSpec,
+        //             filterExpr
+        //     );
+        // }
+
+        // // 6. Fetch and print matching tuples
+        // Tuple tuple;
+        // while ((tuple = scan.get_next()) != null) {
+        //     printTupleProjection(tuple, schema, projectionFields);
+        // }
+        // scan.close();
+
+    } catch (Exception e) {
+        e.printStackTrace();
     }
+}
 
 
 
