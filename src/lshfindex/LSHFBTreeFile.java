@@ -15,6 +15,7 @@
  
  import java.util.ArrayList;
  import java.util.HashSet;
+ import java.util.Arrays;
  
  import java.util.Queue;
  import java.util.LinkedList;
@@ -631,6 +632,174 @@
 
 		if (leafPage != null) {
 			unpinPage(leafPage.getCurPage(), false);
+		}
+
+		return nearestNeighbors;
+	}
+
+
+	public ArrayList<KeyDataEntry> DeleteFile(String bucketKey, Vector100Dtype key) 
+    throws KeyTooLongException, 
+           KeyNotMatchException, 
+           LeafInsertRecException, 
+           IndexInsertRecException, 
+           ConstructPageException, 
+           UnpinPageException,
+           PinPageException, 
+           NodeNotMatchException, 
+           ConvertException,
+           DeleteRecException,
+           IndexSearchException,
+           IteratorException, 
+           LeafDeleteException, 
+           InsertException,
+           IOException,
+		   FreePageException
+	{
+		PageId currentPageId = headerPage.get_rootId();
+		LSHFBTLeafPage leafPage = null;
+		LSHFBTIndexPage indexPage = null;
+
+		ArrayList<KeyDataEntry> nearestNeighbors = new ArrayList<>();
+		ArrayList<PageId> parentNodes = new ArrayList<>();
+		ArrayList<PageId> visitedLeaf = new ArrayList<>();
+
+		if (currentPageId.pid == INVALID_PAGE) {
+			System.out.println("⚠️ Tree is empty.");
+			return nearestNeighbors;
+		}
+
+		Page page;
+		String[] keys = bucketKey.split("_");
+		String currentPath = keys[0];
+
+		for (int i = 1; i < keys.length; i++) {
+			currentPath += "_" + keys[i];
+			StringKey pathKey = new StringKey(currentPath);
+
+			page = pinPage(currentPageId);
+			short nodeType = new LSHFBTSortedPage(page, headerPage.get_keyType()).getType();
+
+			//System.out.println("➡️ TRAVERSING: " + currentPath + " | Current Page ID: " + currentPageId.pid);
+
+			if (nodeType != NodeType.INDEX) {
+				throw new NodeNotMatchException(null, "Expected INDEX node at " + currentPath);
+			}
+
+			indexPage = new LSHFBTIndexPage(page, headerPage.get_keyType());
+			parentNodes.add(currentPageId);
+
+
+			//System.out.println("bucketkey: " + bucketKey+ " vs currentKey: "+ currentPath);
+
+			PageId nextPageId = indexPage.getPageNoByKey(pathKey);
+
+			if (nextPageId == null || nextPageId.pid == INVALID_PAGE) {
+				unpinPage(currentPageId);
+				System.out.println("⚠️ No child found at: " + currentPath);
+				return nearestNeighbors;
+			}
+
+			if (i == keys.length - 1) {
+				// 🌟 FULL PREFIX MATCH: Look up full bucket key -> should find leaf
+				StringKey fullKey = new StringKey(currentPath);	//new StringKey(bucketKey);
+				PageId leafPageId = indexPage.getPageNoByKey(fullKey);
+
+				if (leafPageId == null || leafPageId.pid == INVALID_PAGE) {
+					unpinPage(indexPage.getCurPage(), false);
+					System.out.println("⚠️ No leaf linked to: " + currentPath);
+					return nearestNeighbors;
+				}
+
+				// 🛡️ Pin the page and check if it's a real LEAF
+				Page leafCandidatePage = pinPage(leafPageId);
+				short leafNodeType = new LSHFBTSortedPage(leafCandidatePage, headerPage.get_keyType()).getType();
+
+				if (leafNodeType != NodeType.LEAF) {
+					// 🚨 Wrong node type: unpin and exit
+					unpinPage(leafPageId);
+					unpinPage(indexPage.getCurPage(), false);
+					System.out.println("⚠️ Page under " + currentPath + " is not a LEAF (type: " + leafNodeType + ")");
+					return nearestNeighbors;
+				}
+
+				// ✅ Now safely treat it as a leaf
+				leafPage = new LSHFBTLeafPage(leafCandidatePage, AttrType.attrVector100D);
+
+				unpinPage(indexPage.getCurPage(), false); // Done with index
+				break; // Exit traversal
+			}
+
+			unpinPage(currentPageId);
+			currentPageId = nextPageId;
+		}
+
+		//System.out.println("We followed the current path: " + currentPath);
+		//searchedNodes.add(currentPath);
+
+
+
+		if (leafPage == null) {
+			System.out.println("⚠️ Leaf page not found.");
+			return nearestNeighbors;
+		}
+
+		// ✅ Now scan from the correct leaf page
+		while (leafPage != null) {
+
+
+			RID rid = new RID();
+			KeyDataEntry entry = leafPage.getFirst(rid);
+
+			//leafPage.delEntry(entry);
+
+			while (entry != null) {
+				//nearestNeighbors.add(entry);
+				// if (nearestNeighbors.size() >= number_of_neighbors) {
+				// 	break;
+				// }
+				
+				Vector100Dtype contender = ((Vector100DKey) entry.key).getKey();
+
+					
+				if(Arrays.equals(key.getValues(), contender.getValues()))
+				{
+					//System.out.println(leafPage.available_space());
+					//System.out.println("We found a match: ");
+					leafPage.delEntry(entry);
+
+					//System.out.println(leafPage.available_space());
+				}
+				
+
+				// if(contender.getValues() == key.getValues())
+				// 	System.out.println("we found a match!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+
+				entry = leafPage.getNext(rid);
+			}
+
+
+
+			//leafPage.deleteSortedRecord(rid);
+
+			// if (nearestNeighbors.size() >= number_of_neighbors) {
+			// 	break;
+			// }
+
+			PageId rightSiblingId = leafPage.getNextPage();
+			if (rightSiblingId.pid == INVALID_PAGE) {
+				break;
+			}
+
+			unpinPage(leafPage.getCurPage(), true);
+			leafPage = new LSHFBTLeafPage(pinPage(rightSiblingId), AttrType.attrVector100D);
+		}
+
+		//freePage(leafPage.getCurPage());
+
+		if (leafPage != null) {
+			unpinPage(leafPage.getCurPage(), true);
+			
 		}
 
 		return nearestNeighbors;
