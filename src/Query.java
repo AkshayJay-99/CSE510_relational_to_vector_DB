@@ -108,28 +108,40 @@ public class Query {
             int k = Integer.parseInt(parts[2].trim());
             // 🔹 Read the target vector from the file
             Vector100Dtype targetVector = readVectorFromFile(targetVectorFile);
-            int noOutFlds = parts.length - 3;
-            FldSpec[] projlist = new FldSpec[noOutFlds];
-            RelSpec rel = new RelSpec(RelSpec.outer);
-            for (int i = 0; i < noOutFlds; i++) {
-                projlist[i] = new FldSpec(rel, Integer.parseInt(parts[3 + i].trim()));
+
+            FldSpec[] projlist = null;
+            int noOutFlds = 0;
+            if (parts.length == 4 && parts[3].trim().equals("*")) {
+                noOutFlds = numAttributes;
+                projlist = new FldSpec[noOutFlds];
+                RelSpec rel = new RelSpec(RelSpec.outer);
+                for (int i = 0; i < noOutFlds; i++) {
+                    projlist[i] = new FldSpec(rel, i + 1);
+                }
+            } else {
+                noOutFlds = parts.length - 3;
+                projlist = new FldSpec[noOutFlds];
+                RelSpec rel = new RelSpec(RelSpec.outer);
+                for (int i = 0; i < noOutFlds; i++) {
+                    projlist[i] = new FldSpec(rel, Integer.parseInt(parts[3 + i].trim()));
+                }                
             }
-            System.out.println("Processing Nearest Neighbor Query...");
+
+            System.out.println("Processing Sort Query...");
             System.out.println("Query Field: " + queryField);
             System.out.println("Target Vector File: " + targetVectorFile);
-            System.out.println("Number of Neighbors: " + k);
+            System.out.println("Number of Results: " + k);
 
             List<Tuple> results = new ArrayList<>();
             AttrType[] out_types = new AttrType[noOutFlds];
             NNIndexScan nn = null;
 
-            System.out.println("Performing full heapfile scan for nearest neighbors...");
-            System.out.println("Performing full heapfile scan for range query...");
+            System.out.println("Performing full heapfile scan for sorting...");
             TupleOrder[] order = new TupleOrder[2];
             order[0] = new TupleOrder(TupleOrder.Ascending);
             order[1] = new TupleOrder(TupleOrder.Descending);
             try {
-                nn = new NNIndexScan(new IndexType(IndexType.None), "data_heap.in", "", schema, getStringSizes(schema), numAttributes, noOutFlds, projlist, null, queryField, targetVector, k);
+                nn = new NNIndexScan(new IndexType(IndexType.None), relation1Name+".in", "", schema, getStringSizes(schema), numAttributes, noOutFlds, projlist, null, queryField, targetVector, k);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -343,7 +355,7 @@ public class Query {
         } catch (Exception e) {
             e.printStackTrace();
         }*/
-    private static void processRangeQuery(String relationName, String querySpecification, AttrType[] schema, short tupleStrSizes, int h, int L) {
+    private static void processRangeQuery(String relationName, String querySpecification, AttrType[] schema, short numAttributes, int h, int L) {
         try {
             // 🔹 Extract parameters from "Range(QA, T, D, ...)"
 
@@ -354,11 +366,23 @@ public class Query {
             String useIndexOption = parts[3].trim();
             // 🔹 Read the target vector from the file
             Vector100Dtype targetVector = readVectorFromFile(targetVectorFile);
-            int noOutFlds = parts.length - 4;
-            FldSpec[] projlist = new FldSpec[noOutFlds];
-            RelSpec rel = new RelSpec(RelSpec.outer);
-            for (int i = 0; i < noOutFlds; i++) {
-                projlist[i] = new FldSpec(rel, Integer.parseInt(parts[4+i].trim()));
+            int noOutFlds = 0;
+            FldSpec[] projlist = null;
+
+            if (parts.length == 5 && parts[4].trim().equals("*")) {
+                noOutFlds = numAttributes;
+                projlist = new FldSpec[noOutFlds];
+                RelSpec rel = new RelSpec(RelSpec.outer);
+                for (int i = 0; i < noOutFlds; i++) {
+                    projlist[i] = new FldSpec(rel, i + 1);
+                }
+            } else {
+                noOutFlds = parts.length - 4;
+                projlist = new FldSpec[noOutFlds];
+                RelSpec rel = new RelSpec(RelSpec.outer);
+                for (int i = 0; i < noOutFlds; i++) {
+                    projlist[i] = new FldSpec(rel, Integer.parseInt(parts[4 + i].trim()));
+                }                
             }
             System.out.println("Processing Range Query...");
             System.out.println("Query Field: " + queryField);
@@ -372,7 +396,7 @@ public class Query {
             if (useIndexOption.equalsIgnoreCase("H")) {
                 System.out.println("Using LSH-Forest for range query...");
                 try {
-                    rs = new RSIndexScan(new IndexType(IndexType.LSHF_Index), "data_heap.in", "databaseName"+'_'+queryField+'_'+h+'_'+L, schema, getStringSizes(schema), tupleStrSizes, noOutFlds,  projlist, null, queryField, targetVector, distanceThreshold);
+                    rs = new RSIndexScan(new IndexType(IndexType.LSHF_Index), relationName+".in", "databaseName"+'_'+queryField+'_'+h+'_'+L, schema, getStringSizes(schema), numAttributes, noOutFlds,  projlist, null, queryField, targetVector, distanceThreshold);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -383,7 +407,7 @@ public class Query {
                 order[0] = new TupleOrder(TupleOrder.Ascending);
                 order[1] = new TupleOrder(TupleOrder.Descending);
                 try {
-                    rs = new RSIndexScan(new IndexType(IndexType.None), "data_heap.in", "", schema, getStringSizes(schema), tupleStrSizes, noOutFlds,  projlist, null, queryField, targetVector, distanceThreshold);
+                    rs = new RSIndexScan(new IndexType(IndexType.None), "data_heap.in", "", schema, getStringSizes(schema), numAttributes, noOutFlds,  projlist, null, queryField, targetVector, distanceThreshold);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -404,7 +428,7 @@ public class Query {
 
 
     // ---- NN Query ----
-    private static void processNNQuery( String relName, String queryLine, AttrType[] schema, short attrSize, int h, int L){
+    private static void processNNQuery( String relName, String queryLine, AttrType[] schema, short numAttributes, int h, int L){
         try {
             // 🔹 Extract parameters from "NN(QA, T, K, ...)"
             String[] parts = queryLine.replace("NN(", "").replace(")", "").split(",");
@@ -414,11 +438,23 @@ public class Query {
             String useIndexOption = parts[3].trim();
             // 🔹 Read the target vector from the file
             Vector100Dtype targetVector = readVectorFromFile(targetVectorFile);
-            int noOutFlds = parts.length - 4;
-            FldSpec[] projlist = new FldSpec[noOutFlds];
-            RelSpec rel = new RelSpec(RelSpec.outer);
-            for (int i = 0; i < noOutFlds; i++) {
-                projlist[i] = new FldSpec(rel, Integer.parseInt(parts[4+i].trim()));
+
+            int noOutFlds = 0;
+            FldSpec[] projlist = null;
+            if (parts.length == 5 && parts[4].trim().equals("*")) {
+                noOutFlds = numAttributes;
+                projlist = new FldSpec[noOutFlds];
+                RelSpec rel = new RelSpec(RelSpec.outer);
+                for (int i = 0; i < noOutFlds; i++) {
+                    projlist[i] = new FldSpec(rel, i + 1);
+                }
+            } else {
+                noOutFlds = parts.length - 4;
+                projlist = new FldSpec[noOutFlds];
+                RelSpec rel = new RelSpec(RelSpec.outer);
+                for (int i = 0; i < noOutFlds; i++) {
+                    projlist[i] = new FldSpec(rel, Integer.parseInt(parts[4 + i].trim()));
+                }                
             }
             System.out.println("Processing Nearest Neighbor Query...");
             System.out.println("Query Field: " + queryField);
@@ -431,7 +467,7 @@ public class Query {
             if (useIndexOption.equalsIgnoreCase("H")) {
                 System.out.println("Using LSH-Forest for nearest neighbor search...");
                 try {
-                    nn = new NNIndexScan(new IndexType(IndexType.LSHF_Index),  relName+".in", relName+'_'+queryField+'_'+h+'_'+L, schema, getStringSizes(schema), attrSize, noOutFlds,  projlist, null, queryField, targetVector, k);
+                    nn = new NNIndexScan(new IndexType(IndexType.LSHF_Index),  relName+".in", relName+'_'+queryField+'_'+h+'_'+L, schema, getStringSizes(schema), numAttributes, noOutFlds,  projlist, null, queryField, targetVector, k);
                 }
                 catch (Exception e) {
                     e.printStackTrace();
@@ -444,7 +480,7 @@ public class Query {
                 order[0] = new TupleOrder(TupleOrder.Ascending);
                 order[1] = new TupleOrder(TupleOrder.Descending);
                 try {
-                    nn = new NNIndexScan(new IndexType(IndexType.None), relName+".in", "", schema, getStringSizes(schema), attrSize, noOutFlds,  projlist, null, queryField, targetVector, k);
+                    nn = new NNIndexScan(new IndexType(IndexType.None), relName+".in", "", schema, getStringSizes(schema), numAttributes, noOutFlds,  projlist, null, queryField, targetVector, k);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -569,6 +605,7 @@ public class Query {
         for (int i = 0; i < pf.size(); i++) ps[i] = new FldSpec(new RelSpec(RelSpec.outer), pf.get(i));
         return ps;
     }
+
 
     private static void flushPages() {
         try {
