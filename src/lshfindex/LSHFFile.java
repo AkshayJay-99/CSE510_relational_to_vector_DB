@@ -707,6 +707,29 @@ public class LSHFFile extends IndexFile
 
     }
 
+
+    public void DeleteFile(Vector100Dtype key)  throws FreePageException, ScanIteratorException, InsertException, LeafDeleteException, IteratorException, IndexSearchException, DeleteRecException, ConvertException, NodeNotMatchException, PinPageException, UnpinPageException, ConstructPageException, IndexInsertRecException, LeafInsertRecException, KeyNotMatchException, KeyTooLongException, SpaceNotAvailableException, InvalidSlotNumberException, HFDiskMgrException, DiskMgrException, BufMgrException, PageNotReadException, PageUnpinnedException, PagePinnedException, InvalidFrameNumberException, HashEntryNotFoundException, IOException, InvalidTypeException, FieldNumberOutOfBoundException, InvalidTupleSizeException, BufferPoolExceededException, HFException, HashOperationException, ReplacerException, HFBufMgrException
+    {
+        String[][] bucketKeys = new String[layers][hashes + 1]; 
+
+        for(int i = 0; i < layers; i++)
+        {
+            String bucketKey = "layer" + i;
+            bucketKeys[i][0] = bucketKey;
+            for(int j = 1; j < hashes+1; j++)
+            {
+                int hash_value = hash_function(projections[i][j-1], convertShortToDouble(key.getValues()), b_values[i][j-1], width);
+                bucketKey += ("_" + hash_value);
+                bucketKeys[i][j] = bucketKey;
+
+                //System.out.println(bucketKeys[i][j]);
+            }
+            btreeIndex[i].DeleteFile(bucketKey, key);
+        }
+    
+
+    }
+
     
 
     public KeyDataEntry[] NN_Search(Vector100Dtype key, int k) throws ScanIteratorException, InsertException, LeafDeleteException, IteratorException, IndexSearchException, DeleteRecException, ConvertException, NodeNotMatchException, PinPageException, UnpinPageException, ConstructPageException, IndexInsertRecException, LeafInsertRecException, KeyNotMatchException, KeyTooLongException, SpaceNotAvailableException, InvalidSlotNumberException, HFDiskMgrException, DiskMgrException, BufMgrException, PageNotReadException, PageUnpinnedException, PagePinnedException, InvalidFrameNumberException, HashEntryNotFoundException, IOException, InvalidTypeException, FieldNumberOutOfBoundException, InvalidTupleSizeException, BufferPoolExceededException, HFException, HashOperationException, ReplacerException, HFBufMgrException
