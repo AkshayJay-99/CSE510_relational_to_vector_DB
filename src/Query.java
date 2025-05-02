@@ -58,6 +58,8 @@ public class Query {
             int hashFunctions = 0;
             int indexLayers = 0;
 
+        
+            scan.closescan();
             // Read query specification
             BufferedReader reader = new BufferedReader(new FileReader(queryFileName));
             String queryLine = reader.readLine().trim();
@@ -431,6 +433,23 @@ public class Query {
             // 🔹 Read the target vector from the file
             Vector100Dtype targetVector = readVectorFromFile(targetVectorFile);
 
+            Heapfile index_heapfile = new Heapfile(relName + "indexes");
+            Scan scan = index_heapfile.openScan();
+            //tuple;
+            Tuple tuple;
+            RID rid = new RID();
+            while((tuple = scan.getNext(rid)) != null)
+            {
+                tuple.setHdr((short) 1, new AttrType[]{new AttrType(AttrType.attrString)}, new short[]{30});
+                String index_String = tuple.getStrFld(1);
+                String[] index_parts = index_String.split("_");
+                System.out.println("Index String: " + index_String);
+                if (queryField == Integer.parseInt(index_parts[1])) {
+                    h = Integer.parseInt(index_parts[3]);
+                    L = Integer.parseInt(index_parts[2]);           
+                }
+            }
+
             int noOutFlds = 0;
             FldSpec[] projlist = null;
             if (parts.length == 5 && parts[4].trim().equals("*")) {
@@ -459,7 +478,7 @@ public class Query {
             if (useIndexOption.equalsIgnoreCase("H")) {
                 System.out.println("Using LSH-Forest for nearest neighbor search...");
                 try {
-                    nn = new NNIndexScan(new IndexType(IndexType.LSHF_Index),  relName+".in", relName+'_'+queryField+'_'+h+'_'+L, schema, getStringSizes(schema), numAttributes, noOutFlds,  projlist, null, queryField, targetVector, k);
+                    nn = new NNIndexScan(new IndexType(IndexType.LSHF_Index),  relName+".in", relName + "_" + queryField + "_" + L + "_"+ h, schema, getStringSizes(schema), numAttributes, noOutFlds,  projlist, null, queryField, targetVector, k);
                 }
                 catch (Exception e) {
                     e.printStackTrace();

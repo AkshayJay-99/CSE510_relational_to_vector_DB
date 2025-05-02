@@ -58,8 +58,8 @@ public class NNIndexScan {
             try {
                 AttrType[] out_types = new AttrType[noOutFlds];
                 String[] parts = indName.split("_");  
-                int h = Integer.parseInt(parts[2]);  // Extract h value
-                int L = Integer.parseInt(parts[3]);  // Extract L value              
+                int L = Integer.parseInt(parts[2]);  // Extract L value            
+                int h = Integer.parseInt(parts[3]);  // Extract h value
                 LSHFFile lshf = new LSHFFile(indName, h, L);
                 KeyDataEntry[] nn_results = lshf.NN_Search(query, count);
                 Heapfile heapfile = new Heapfile(relName);

@@ -347,10 +347,10 @@ public class Interface {
         LSHFFile lshf = null;
         BTreeFile btree = null;
 
-        if(schema[columnId].attrType == AttrType.attrVector100D)
-            lshf = new LSHFFile((currentDatabaseName + "_" + newIndexinfo), h, L);
+        if(schema[columnId-1].attrType == AttrType.attrVector100D)
+            lshf = new LSHFFile((newIndexinfo), h, L);
 
-        if(schema[columnId].attrType == AttrType.attrReal)
+        if(schema[columnId-1].attrType == AttrType.attrReal)
         {
             String indexName = relName + "_" + columnId;
             int keySize = 4;
@@ -368,14 +368,14 @@ public class Interface {
 
             //System.out.println(schema[columnId]);
 
-            switch(schema[columnId].attrType)
+            switch(schema[columnId-1].attrType)
             {
                 case AttrType.attrInteger: 
                     System.out.println("We have a integer ");
                 break;
 
                 case AttrType.attrReal: 
-                    float val = tuple.getFloFld(columnId + 1);
+                    float val = tuple.getFloFld(columnId);
                     //System.out.println("We have a Real num: " + val);
                     
                     btree.IntegerKey key = new btree.IntegerKey((int) val);
@@ -389,7 +389,7 @@ public class Interface {
 
                 case AttrType.attrVector100D: 
                     //System.out.println("We have a 100DVector");
-                    Vector100Dtype currVector = tuple.get100DVectorFld(columnId + 1);
+                    Vector100Dtype currVector = tuple.get100DVectorFld(columnId);
                     Vector100DKey insert = new Vector100DKey(currVector);
                     lshf.insert(insert, rid);
                 break;
@@ -399,9 +399,9 @@ public class Interface {
             //System.out.println(tuple.get100DVectorFld(attributeToDel));
         }
 
-        if(schema[columnId].attrType == AttrType.attrVector100D)
+        if(schema[columnId-1].attrType == AttrType.attrVector100D)
             lshf.close();
-        if(schema[columnId].attrType == AttrType.attrReal)
+        if(schema[columnId-1].attrType == AttrType.attrReal)
         {
             btree.close();
         }

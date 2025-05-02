@@ -501,7 +501,6 @@ public class LSHFFile extends IndexFile
         headerPage.setNumHashes(h);
 
         btreeIndex = new LSHFBTreeFile[L];
-
         for (int i = 0; i < L; i++) {
             String indexName = fileName+"BTree_layer" + i;
             PageId pageId = SystemDefs.JavabaseDB.get_file_entry(indexName);
@@ -509,8 +508,10 @@ public class LSHFFile extends IndexFile
             if (pageId != null) {
                 // ✅ Reload existing index
                 //System.out.println("✅ Loading existing B+Tree index: " + indexName + " (PageId: " + pageId.pid + ")");
+                System.out.println("existing index found: " + indexName);
                 this.btreeIndex[i] = new LSHFBTreeFile(indexName);
             } else {
+                System.out.println("❌ No existing index found, creating a new one: " + indexName);
                 // ❌ No existing index found, create a new one
                 //System.out.println("⚠️ No existing BTree index found. Creating new one for " + indexName);
                 this.btreeIndex[i] = new LSHFBTreeFile(indexName, AttrType.attrString, 250, 1);
