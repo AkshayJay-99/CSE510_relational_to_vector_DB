@@ -78,14 +78,14 @@ public class BatchDelete {
             }
             attr_char +=(char) (2+ '0');
             attr_char +=(char) (1+ '0');
-            System.out.println(attr_char);
+            //System.out.println(attr_char);
             Heapfile heapfile_sc = new Heapfile("sc_heap.in");
 
             Tuple sc_tuple = new Tuple();
             sc_tuple.setHdr((short) 1, new AttrType[]{new AttrType(AttrType.attrString)}, new short[]{30});
             sc_tuple.setStrFld(1, attr_char);  
             RID sc_rid = heapfile_sc.insertRecord(sc_tuple.getTupleByteArray());
-            System.out.println("Schema stored with RID: Page " + sc_rid.pageNo.pid + ", Slot " + sc_rid.slotNo);
+            //System.out.println("Schema stored with RID: Page " + sc_rid.pageNo.pid + ", Slot " + sc_rid.slotNo);
             
 
             // 🔹 Step 4: Create Heapfile
@@ -141,10 +141,10 @@ public class BatchDelete {
             Tuple indextuple;
             RID indexrid;
 
-            System.out.println("retrieving values within: " + (relName + "indexes"));
+            //System.out.println("retrieving values within: " + (relName + "indexes"));
             PageId check_pid = SystemDefs.JavabaseDB.get_file_entry(relName + "indexes");
 
-            System.out.println("Did we did we find anything for the pid: " + check_pid);
+            //System.out.println("Did we did we find anything for the pid: " + check_pid);
 
             Heapfile heapfileIndex = new Heapfile(relName + "indexes");
 
@@ -157,7 +157,7 @@ public class BatchDelete {
                 indextuple.setHdr((short) 1, new AttrType[]{new AttrType(AttrType.attrString)}, new short[]{30});
                 String potential_match = indextuple.getStrFld(1);
                 potential_indexes.add(potential_match);
-                System.out.println("potential val: "+potential_match);
+                //System.out.println("potential val: "+potential_match);
             }
 
             indexscan.closescan();
@@ -399,17 +399,17 @@ public class BatchDelete {
 
                             deletionList.clear();
                             
-                            int count = 0;
-                            scan = heapfile.openScan();
-                            rid = new RID();
-                            while ((tuple = scan.getNext(rid)) != null) {
-                                tuple.setHdr((short) schema.length, schema, getStringSizes(schema)); // Set header before printing
-                                //tuple.print(schema[1]); // ✅ Corrected print statement
-                                //System.out.println(tuple.get100DVectorFld(attributeToDel));
-                                tuple.print(schema);
-                                count ++;
-                            }
-                            scan.closescan();
+                            // int count = 0;
+                            // scan = heapfile.openScan();
+                            // rid = new RID();
+                            // while ((tuple = scan.getNext(rid)) != null) {
+                            //     tuple.setHdr((short) schema.length, schema, getStringSizes(schema)); // Set header before printing
+                            //     //tuple.print(schema[1]); // ✅ Corrected print statement
+                            //     //System.out.println(tuple.get100DVectorFld(attributeToDel));
+                            //     tuple.print(schema);
+                            //     count ++;
+                            // }
+                            // scan.closescan();
                             
                             // System.out.println("Number of records: " + count);
                             //tuple.set100DVectorFld(fieldNum, new Vector100Dtype(vector));
@@ -445,7 +445,7 @@ public class BatchDelete {
 
             }
 
-            System.out.println("numRecordsInserted: " + numRecordsInserted + " num100DRecordInserted: " + num100DRecordInserted);
+            //System.out.println("numRecordsInserted: " + numRecordsInserted + " num100DRecordInserted: " + num100DRecordInserted);
             // for (int i = 0; i < numAttributes; i++) {
             //     if (schema[i].attrType == AttrType.attrVector100D) {
             //         lshf[i].close();
@@ -453,7 +453,7 @@ public class BatchDelete {
             //     }
             // }
             reader.close();
-            System.out.println("Batch Insertion Complete!");
+            //System.out.println("Batch Insertion Complete!");
             flushPages();
             
             // Optionally, here's how you could shut down the system entirely, which also ensures data is saved
