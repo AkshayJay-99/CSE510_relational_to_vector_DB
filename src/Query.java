@@ -59,7 +59,6 @@ public class Query {
             int indexLayers = 0;
 
         
-            scan.closescan();
             // Read query specification
             BufferedReader reader = new BufferedReader(new FileReader(queryFileName));
             String queryLine = reader.readLine().trim();
@@ -85,8 +84,6 @@ public class Query {
             e.printStackTrace();
         }
 
-        // Flush buffers and report I/O
-        flushPages();
         System.out.println("Disk pages read: " + PCounter.rcounter);
         System.out.println("Disk pages written: " + PCounter.wcounter);
     }
@@ -244,7 +241,6 @@ public class Query {
                 }
                 
             }
-            
             iscan.close();
         } else {
             System.out.println("Performing full heapfile scan");
