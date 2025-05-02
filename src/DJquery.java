@@ -242,7 +242,7 @@ public class DJquery {
                 if(useLSH.equals("H")){
                 try{     
                         scan = new NNIndexScan(
-                        new IndexType(IndexType.LSHF_Index), "data_heap.in","",
+                        new IndexType(IndexType.LSHF_Index), "data_heap.in",relName1 + '_' + queryField + '_' + h + '_' + L,
                         attrType, getStringSizes(attrType), attrSize, noOutFlds,  projlist, null, queryField, targetVector, k
                     );
                 }catch(Exception e){
@@ -256,7 +256,7 @@ public class DJquery {
                     try{     
                         scan = new NNIndexScan(
                         new IndexType(IndexType.None), "data_heap.in",
-                        relName1 + '_' + queryField + '_' + h + '_' + L,
+                        "",
                         attrType, getStringSizes(attrType), attrSize, noOutFlds,  projlist, null, queryField, targetVector, k
                     );
                     }catch(Exception e){
