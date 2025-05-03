@@ -602,7 +602,7 @@ public void setHdr (short numFlds,  AttrType types[], short strSizes[])
      break;
    case AttrType.attrVector100D:
      Vector100Dtype vector = get100DVectorFld(fldCnt);
-     System.out.print(vectorToString(vector));
+     System.out.print(vector);
      break;
 
    case AttrType.attrNull:
