@@ -550,6 +550,7 @@ public class Query {
             Scan scan = index_heapfile.openScan();
             //tuple;
             Tuple tuple;
+            boolean found = false;
             RID rid = new RID();
             while((tuple = scan.getNext(rid)) != null)
             {
@@ -560,7 +561,34 @@ public class Query {
                 if (queryField == Integer.parseInt(index_parts[1])) {
                     h = Integer.parseInt(index_parts[3]);
                     L = Integer.parseInt(index_parts[2]);           
+                    found = true;
                 }
+            }
+
+            if (!found && useLSH.equalsIgnoreCase("H")) {
+                System.out.println(rel1+"Index file not found for " + queryField + ". Please create the index first.");
+                return;
+            }
+
+            Heapfile rel2_index_heapfile = new Heapfile(rel2 + "indexes");
+            Scan rel2_scan = rel2_index_heapfile.openScan();
+            //tuple;
+            Tuple rel2_tuple;
+            boolean rel2_found = false;
+            RID rel2_rid = new RID();
+            while((rel2_tuple = rel2_scan.getNext(rel2_rid)) != null)
+            {
+                rel2_tuple.setHdr((short) 1, new AttrType[]{new AttrType(AttrType.attrString)}, new short[]{30});
+                String index_String = rel2_tuple.getStrFld(1);
+                String[] index_parts = index_String.split("_");
+                if (qf2 == Integer.parseInt(index_parts[1])) {        
+                    rel2_found = true;
+                }
+            }
+
+            if (!rel2_found && useLSH2.equalsIgnoreCase("H")) {
+                System.out.println(rel2+"Index file not found for " + qf2 + ". Please create the index first.");
+                return;
             }
 
             int noOutFlds = 0;
