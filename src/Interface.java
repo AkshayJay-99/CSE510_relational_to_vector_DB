@@ -315,12 +315,27 @@ public class Interface {
         //tuple;
         rid = new RID();
 
+        boolean vector100DIndex = false;
+
+        if(schema[columnId + 1].attrType == AttrType.attrVector100D)
+        {
+            System.out.println("We are creating a index on a Vector100DType");
+            vector100DIndex = true;
+        }
+
+        RID deleteRecord = null;
 
         while((tuple = scan.getNext(rid)) != null)
         {
 
             tuple.setHdr((short) 1, new AttrType[]{new AttrType(AttrType.attrString)}, new short[]{30});
             String potential_match = tuple.getStrFld(1);
+
+            String[] checkValues = potential_match.split("_");
+            String name = checkValues[0];
+            String column = checkValues[1];
+            String L_val = checkValues[2];
+            String h_val = checkValues[3];
             //
             //System.out.println("potential_match: " + potential_match +  " vs newIndexinfo: " + newIndexinfo);
             if(potential_match.equals(newIndexinfo))
@@ -330,16 +345,32 @@ public class Interface {
                 return;
             }
 
+            String columnId_str = ""+columnId;
+            if(relName.equals(name) && columnId_str.equals(column) && vector100DIndex == true)
+            {
+                System.out.println("We already have an LSHF index on this column, deleteing previous index and creating a new one!");
+                deleteRecord = new RID();
+                deleteRecord.pageNo = new PageId(rid.pageNo.pid);
+                deleteRecord.slotNo = rid.slotNo;
+                
+                // LSHFFile lshfRemove = new LSHFFile(potential_match, Integer.parseInt(h_val), Integer.parseInt(L_val));
+                // lshfRemove.destroy();
+                //lshfRemove.close();
+                
+            }
+
 
             // if(tuple != null)
             // {
             //     
             // }
         }
-
-
-
         scan.closescan();
+
+        if(deleteRecord != null)
+        {
+            heapfile.deleteRecord(deleteRecord);
+        }
 
         Tuple index_tuple = new Tuple();
         index_tuple.setHdr((short) 1, new AttrType[]{new AttrType(AttrType.attrString)}, new short[]{30});
@@ -369,6 +400,8 @@ public class Interface {
             int deleteFashion = lshfindex.DeleteFashion.FULL_DELETE;
             System.out.println("Creating BTree index with name: " + indexName);
             btree = new BTreeFile(indexName, keyType, keySize, deleteFashion);
+            PageId btree_pid = SystemDefs.JavabaseDB.get_file_entry(indexName);
+            System.out.println("We found a btree with pid: " + btree_pid);
         }
             
 

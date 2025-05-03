@@ -372,7 +372,10 @@ public class BatchInsert {
                         case AttrType.attrReal:
                             float  floVla = tuple.getFloFld(columToCheck+1);
                             //System.out.println("Checking for a realNum attr: " + floVla);
-                            String btreeName = relName + "_" + Integer.parseInt(values[1]);
+                            String btreeName = relName + "_" + (Integer.parseInt(values[1]) -1);
+                            PageId btree_pid = SystemDefs.JavabaseDB.get_file_entry(btreeName);
+                            System.out.println("We found a btree with pid: " + btree_pid);
+                            System.out.println("Checking btree name: " + btreeName);
                             BTreeFile btree = new BTreeFile(btreeName);
                             btree.IntegerKey key = new btree.IntegerKey((int) floVla);
                             btree.insert(key, recordID);
