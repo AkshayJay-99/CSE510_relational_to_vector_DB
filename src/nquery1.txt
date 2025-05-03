@@ -1,1 +1,1 @@
-NN(2, target1, 5, H, 1, 2)
+NN(4, target1, 5, H, 1, 2)

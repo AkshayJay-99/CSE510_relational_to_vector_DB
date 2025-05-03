@@ -65,6 +65,8 @@ public class Interface {
                         break;
 
                     case "createindex":
+                        PCounter.rcounter = 0;
+                        PCounter.wcounter = 0;
                         if (requireDatabaseContext() && tokens.length == 5) {
                             createIndex(tokens[1], Integer.parseInt(tokens[2]),
                                     Integer.parseInt(tokens[3]), Integer.parseInt(tokens[4]));
@@ -74,6 +76,8 @@ public class Interface {
                         break;
 
                     case "batchinsert":
+                        PCounter.rcounter = 0;
+                        PCounter.wcounter = 0;
                         if (requireDatabaseContext() && tokens.length == 3) {
                             batchInsert(tokens[1], tokens[2]);
                         } else {
@@ -82,6 +86,8 @@ public class Interface {
                         break;
 
                     case "batchdelete":
+                        PCounter.rcounter = 0;
+                        PCounter.wcounter = 0;
                         if (requireDatabaseContext() && tokens.length == 3) {
                             batchDelete(tokens[1], tokens[2]);
                         } else {
@@ -90,6 +96,8 @@ public class Interface {
                         break;
 
                     case "query":
+                        PCounter.rcounter = 0;
+                        PCounter.wcounter = 0;
                         if (requireDatabaseContext() && tokens.length == 5) {
                             query(tokens[1], tokens[2], tokens[3], Integer.parseInt(tokens[4]));
                         } else {
@@ -132,7 +140,7 @@ public class Interface {
     public static void openDatabase(String dbName) {
         currentDatabaseName = dbName;
         String dbpath = "/tmp/"+System.getProperty("user.name")+"."+dbName; 
-        int numPages = 12000; // Disk pages allocated
+        int numPages = 120000; // Disk pages allocated
         int bufferSize = 16000; // Buffer pool size
         new SystemDefs(dbpath, 0, bufferSize, "Clock");
         if (SystemDefs.JavabaseDB.db_num_pages() == 0) {
@@ -404,6 +412,7 @@ public class Interface {
             lshf.close();
         if(schema[columnId-1].attrType == AttrType.attrReal)
         {
+            System.out.println("Closing BTree index file: ");
             btree.close();
         }
 

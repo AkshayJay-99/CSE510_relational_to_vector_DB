@@ -132,11 +132,15 @@ public class IndexScan extends Iterator {
    * @exception IndexException error from the lower layer
    * @exception UnknownKeyTypeException key type unknown
    * @exception IOException from the lower layer
+   * @throws ReplacerException 
+   * @throws HashEntryNotFoundException 
+   * @throws InvalidFrameNumberException 
+   * @throws PageUnpinnedException 
    */
   public Tuple get_next() 
     throws IndexException, 
 	   UnknownKeyTypeException,
-	   IOException
+	   IOException, PageUnpinnedException, InvalidFrameNumberException, HashEntryNotFoundException, ReplacerException
   {
     RID rid;
     int unused;
@@ -247,7 +251,7 @@ public class IndexScan extends Iterator {
 	throw new IndexException(e, "IndexScan.java: BTree error");
       }	  
     }
-    
+    indFile.close();
     return null; 
   }
   
@@ -268,13 +272,12 @@ public class IndexScan extends Iterator {
 	  throw new IndexException(e, "BTree error in destroying index scan.");
 	}
       }
-      
       closeFlag = true; 
     }
   }
   
   public FldSpec[]      perm_mat;
-  private IndexFile     indFile;
+  private BTreeFile     indFile;
   private IndexFileScan indScan;
   private AttrType[]    _types;
   private short[]       _s_sizes; 

@@ -64,8 +64,8 @@ public class RSIndexScan {
                 KeyDataEntry[] rs_results = lshf.Range_Search(query, distance);
                 Heapfile heapfile = new Heapfile(relName);
                 System.out.println();
-                System.out.println("Disk pages read after LSH NN Search: " + PCounter.rcounter);
-                System.out.println("Disk pages written after LSH NN Search: "+PCounter.wcounter);
+                System.out.println("Disk pages read after LSH Range Search: " + PCounter.rcounter);
+                System.out.println("Disk pages written after LSH Range Search: "+PCounter.wcounter);
 
                 for (KeyDataEntry k : rs_results) {
                     Tuple projectedTuple = new Tuple();

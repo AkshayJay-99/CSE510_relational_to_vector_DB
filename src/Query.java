@@ -170,7 +170,11 @@ public class Query {
         System.out.println("Index Option: " + indexOption);
         String dataFile  = relationName + ".in";
         String indexFile = relationName + "_" + queryFieldIndex;
-
+        
+        if (SystemDefs.JavabaseDB.get_file_entry(indexFile)== null && indexOption.equalsIgnoreCase("H")) {
+            System.out.println("Index file not found for " + queryFieldIndex + ". Please create the index first.");
+            return;
+        }
 
         FldSpec[] projlist = null;
         int noOutFlds = 0;
@@ -217,7 +221,7 @@ public class Query {
             filterExpr[1].operand2.symbol = new FldSpec(new RelSpec(RelSpec.outer), queryFieldIndex);
             filterExpr[1].operand1.integer = literalValue;
             filterExpr[2] = null;
-
+            
             IndexScan iscan = null;
             try {
               iscan = new IndexScan(new IndexType(IndexType.B_Index), dataFile, indexFile, schema, getStringSizes(schema), numAttributes, noOutFlds, projlist, filterExpr, queryFieldIndex, false);
@@ -241,7 +245,12 @@ public class Query {
                 }
                 
             }
-            iscan.close();
+            try {
+                iscan.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            flushPages();
         } else {
             System.out.println("Performing full heapfile scan");
 
@@ -281,169 +290,14 @@ public class Query {
             }
             
             fscan.close();
+            flushPages();
         }
-
-        // RHS depends on the field’s type:
-        // switch (schema[queryFieldIndex - 1].attrType) {
-        //     case AttrType.attrInteger:
-        //         filterExpr[0].type2              = new AttrType(AttrType.attrInteger);
-        //         filterExpr[0].operand2.integer   = Integer.parseInt(literalValue);
-        //         break;
-        //     case AttrType.attrReal:
-        //         filterExpr[0].type2            = new AttrType(AttrType.attrReal);
-        //         filterExpr[0].operand2.real    = Float.parseFloat(literalValue);
-        //         break;
-        //     case AttrType.attrString:
-        //         filterExpr[0].type2             = new AttrType(AttrType.attrString);
-        //         filterExpr[0].operand2.string   = literalValue;
-        //         break;
-        //     default:
-        //         throw new IllegalArgumentException("Unsupported filter type");
-        // }
-        // filterExpr[0].next = null;
-        // filterExpr[1]     = null;
-
-        // // 5. Choose between B+Tree index scan or full FileScan
-        // String dataFile  = relationName + "_heap.in";
-        // String indexFile = relationName + "_" + queryFieldIndex;
-        // iterator.Iterator scan;
-        // if (indexOption.equalsIgnoreCase("H")) {
-        //     System.out.println("Using B+Tree index on field " + queryFieldIndex);
-        //     scan = new IndexScan(
-        //             new IndexType(IndexType.B_Index),
-        //             dataFile,
-        //             indexFile,
-        //             schema,
-        //             getStringSizes(schema),
-        //             numAttributes,
-        //             outputCount,
-        //             projectionSpec,
-        //             filterExpr,           // apply predicate in index scan
-        //             queryFieldIndex,
-        //             true                  // <-- boolean flag, not a KeyClass
-        //     );
-        // } else {
-        //     System.out.println("Performing full heapfile scan");
-        //     scan = new FileScan(
-        //             dataFile,
-        //             schema,
-        //             getStringSizes(schema),
-        //             numAttributes,
-        //             numAttributes,
-        //             projectionSpec,
-        //             filterExpr
-        //     );
-        // }
-
-        // // 6. Fetch and print matching tuples
-        // Tuple tuple;
-        // while ((tuple = scan.get_next()) != null) {
-        //     printTupleProjection(tuple, schema, projectionFields);
-        // }
-        // scan.close();
 
     } catch (Exception e) {
         e.printStackTrace();
     }
 }
 
-
-
-
-
-    // ---- Range Query ----
-   /* private static void processRangeQuery(
-            String relName, String queryLine,
-            AttrType[] schema, short attrSize, int h, int L) {
-        try {
-            String inside = queryLine.substring(queryLine.indexOf('(')+1, queryLine.lastIndexOf(')'));
-            String[] p = inside.split(",");
-            int qf          = Integer.parseInt(p[0].trim());
-            String tgtFile  = p[1].trim()+".txt";
-            int thr         = Integer.parseInt(p[2].trim());
-            String idxOpt   = p[3].trim();
-            List<Integer> pf= new ArrayList<>();
-            if (p.length==5 && p[4].trim().equals("*")) pf.add(-1);
-            else for(int i=4;i<p.length;i++) pf.add(Integer.parseInt(p[i].trim()));
-
-            Vector100Dtype tgt = readVectorFromFile(tgtFile);
-            RSIndexScan rs;
-            if (idxOpt.equalsIgnoreCase("H")) {
-                rs = new RSIndexScan(
-                        new IndexType(IndexType.LSHF_Index),
-                        relName + "_heap.in",   // data file
-                        dbName + "_"+qf+"_"+h+"_"+L, // index name
-                        schema, getStringSizes(schema), attrSize,
-                        pf.size(), buildProjList(pf), null,
-                        qf, tgt, thr
-                );
-            } else {
-                rs = new RSIndexScan(
-                        new IndexType(IndexType.None),
-                        relName + "_heap.in", "",
-                        schema, getStringSizes(schema), attrSize,
-                        pf.size(), buildProjList(pf), null,
-                        qf, tgt, thr
-                );
-            }
-            List<Tuple> res = rs.get_all_results();
-            for (Tuple t : res) t.print(schema);
-        } catch(Exception e){ e.printStackTrace(); }
-    }*//*  try {
-            // Extract the comma-separated parameters inside the parentheses
-            String params = querySpecification
-                    .substring(querySpecification.indexOf('(') + 1,
-                            querySpecification.lastIndexOf(')'));
-            String[] tokens = params.split(",");
-
-            // Parse each piece
-            int queryFieldIndex = Integer.parseInt(tokens[0].trim());
-            String targetVectorFile = tokens[1].trim() + ".txt";
-            int distanceThreshold = Integer.parseInt(tokens[2].trim());
-            String indexOption = tokens[3].trim();
-
-            // Build projection list
-            List<Integer> projectionFields = new ArrayList<>();
-            if (tokens.length == 5 && tokens[4].trim().equals("*")) {
-                projectionFields.add(-1);
-            } else {
-                for (int i = 4; i < tokens.length; i++) {
-                    projectionFields.add(Integer.parseInt(tokens[i].trim()));
-                }
-            }
-
-            // Read target vector
-            Vector100Dtype targetVector = readVectorFromFile(targetVectorFile);
-
-            // Determine data and index filenames
-            String dataFileName = relationName + "_heap.in";
-            String indexFileName = "";
-            IndexType idxType = new IndexType(IndexType.None);
-
-            if (indexOption.equalsIgnoreCase("H")) {
-                idxType = new IndexType(IndexType.LSHF_Index);
-                indexFileName = databaseName + "_"
-                        + queryFieldIndex + "_"
-                        + numHashFunctions + "_"
-                        + numIndexLayers;
-            }
-
-            // Create the range scan
-            RSIndexScan rangeScan = new RSIndexScan(idxType, dataFileName, indexFileName, schema,
-                    getStringSizes(schema), tupleStrSizes,
-                    projectionFields.size(), buildProjList(projectionFields),
-                    null, queryFieldIndex, targetVector, distanceThreshold
-            );
-
-            // Fetch and print all matching tuples
-            List<Tuple> results = rangeScan.get_all_results();
-            for (Tuple tuple : results) {
-                tuple.print(schema);
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }*/
     private static void processRangeQuery(String relationName, String querySpecification, AttrType[] schema, short numAttributes, int h, int L) {
         try {
             // 🔹 Extract parameters from "Range(QA, T, D, ...)"
@@ -461,16 +315,23 @@ public class Query {
             //tuple;
             Tuple tuple;
             RID rid = new RID();
+            boolean found = false;
             while((tuple = scan.getNext(rid)) != null)
             {
                 tuple.setHdr((short) 1, new AttrType[]{new AttrType(AttrType.attrString)}, new short[]{30});
                 String index_String = tuple.getStrFld(1);
                 String[] index_parts = index_String.split("_");
-                System.out.println("Index String: " + index_String);
                 if (queryField == Integer.parseInt(index_parts[1])) {
                     h = Integer.parseInt(index_parts[3]);
-                    L = Integer.parseInt(index_parts[2]);           
+                    L = Integer.parseInt(index_parts[2]);    
+                    System.out.println("Index file found: " + index_String);
+                    found = true;
                 }
+            }
+
+            if (!found && useIndexOption.equalsIgnoreCase("H")) {
+                System.out.println("Index file not found for " + queryField + ". Please create the index first.");
+                return;
             }
 
             int noOutFlds = 0;
@@ -549,6 +410,7 @@ public class Query {
             //tuple;
             Tuple tuple;
             RID rid = new RID();
+            boolean found = false;
             while((tuple = scan.getNext(rid)) != null)
             {
                 tuple.setHdr((short) 1, new AttrType[]{new AttrType(AttrType.attrString)}, new short[]{30});
@@ -558,7 +420,14 @@ public class Query {
                 if (queryField == Integer.parseInt(index_parts[1])) {
                     h = Integer.parseInt(index_parts[3]);
                     L = Integer.parseInt(index_parts[2]);           
+                    System.out.println("Index file found: " + index_String);
+                    found = true;
                 }
+            }
+
+            if (!found && useIndexOption.equalsIgnoreCase("H")) {
+                System.out.println("Index file not found for " + queryField + ". Please create the index first.");
+                return;
             }
 
             int noOutFlds = 0;
