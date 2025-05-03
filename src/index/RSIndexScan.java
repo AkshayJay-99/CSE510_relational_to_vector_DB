@@ -78,7 +78,7 @@ public class RSIndexScan {
                     }
                     projectedTuple.setHdr((short) noOutFlds, out_types, _s_sizes);
                     Projection.Project(tuple, types, projectedTuple, perm_mat, noOutFlds);
-                    resultTuples.add(projectedTuple);              
+                    resultTuples.add(projectedTuple);  
                 }
                 lshf.close();
             } catch (Exception e) {

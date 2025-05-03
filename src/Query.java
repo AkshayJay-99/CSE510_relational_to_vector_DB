@@ -428,7 +428,6 @@ public class Query {
                 tuple.setHdr((short) 1, new AttrType[]{new AttrType(AttrType.attrString)}, new short[]{30});
                 String index_String = tuple.getStrFld(1);
                 String[] index_parts = index_String.split("_");
-                System.out.println("Index String: " + index_String);
                 if (queryField == Integer.parseInt(index_parts[1])) {
                     h = Integer.parseInt(index_parts[3]);
                     L = Integer.parseInt(index_parts[2]);           
@@ -513,11 +512,6 @@ public class Query {
             int firstClose = inside.indexOf(")");
             String leftPart = inside.substring(0, firstClose + 1);
             String[] rightParts = inside.substring(firstClose + 2).replace(")","").split(",");
-            System.out.println(firstClose);
-            System.out.println(leftPart);
-            for (String right:rightParts){
-                System.out.println(right);
-            }
             int qf2 = Integer.parseInt(rightParts[0]);
             int distanceThreshold2 = Integer.parseInt(rightParts[1].trim());
             String useLSH2 = rightParts[2].trim();
@@ -557,7 +551,6 @@ public class Query {
                 tuple.setHdr((short) 1, new AttrType[]{new AttrType(AttrType.attrString)}, new short[]{30});
                 String index_String = tuple.getStrFld(1);
                 String[] index_parts = index_String.split("_");
-                System.out.println("Index String: " + index_String);
                 if (queryField == Integer.parseInt(index_parts[1])) {
                     h = Integer.parseInt(index_parts[3]);
                     L = Integer.parseInt(index_parts[2]);           
@@ -638,13 +631,14 @@ public class Query {
                     }
                 result.print(out_types);
                 table.add(result.copy(out_types));
+                }
                 INLJoins joinOP = new INLJoins(rel2,qf2,queryField, distanceThreshold2,useLSH2, table, rightParts, columns);
                 ArrayList<ArrayList>join_result = joinOP.get_all_results();
                 for (ArrayList<Object> tuples:join_result){
                     System.out.println(tuples);
                     System.out.println("\n");
                 }
-        }
+        
      }catch (Exception e) {
             e.printStackTrace();
         }
@@ -660,11 +654,6 @@ public class Query {
                     int firstClose = inside.indexOf(")");
                     String leftPart = inside.substring(0, firstClose + 1);
                     String[] rightParts = inside.substring(firstClose + 2).replace(")","").split(",");
-                    System.out.println(firstClose);
-                    System.out.println(leftPart);
-                    for (String right:rightParts){
-                        System.out.println(right);
-                    }
                     int qf2 = Integer.parseInt(rightParts[0]);
                     int distanceThreshold2 = Integer.parseInt(rightParts[1].trim());
                     String useLSH2 = rightParts[2].trim();
@@ -682,7 +671,7 @@ public class Query {
                     boolean useLSHInner = innerIndexOption.equalsIgnoreCase("H");
                     int queryField;
                     ArrayList<ArrayList> table = new ArrayList<>();
-                    String[] parts = leftPart.replace("Range(", "").replace(")", "").split(",");
+                    String[] parts = leftPart.replace("NN(", "").replace(")", "").split(",");
                     queryField = Integer.parseInt(parts[0].trim());
                     String targetVectorFile = parts[1].trim() + ".txt";
                     // System.out.println(targetVectorFile);
@@ -698,16 +687,41 @@ public class Query {
                     //tuple;
                     Tuple tuple;
                     RID rid = new RID();
+                    boolean found = false;
                     while((tuple = scan.getNext(rid)) != null)
                     {
                         tuple.setHdr((short) 1, new AttrType[]{new AttrType(AttrType.attrString)}, new short[]{30});
                         String index_String = tuple.getStrFld(1);
                         String[] index_parts = index_String.split("_");
-                        System.out.println("Index String: " + index_String);
                         if (queryField == Integer.parseInt(index_parts[1])) {
-                            h = Integer.parseInt(index_parts[3]);
-                            L = Integer.parseInt(index_parts[2]);           
+                            found = true;
                         }
+                    }
+        
+                    if (!found && useLSH.equalsIgnoreCase("H")) {
+                        System.out.println(rel1+"Index file not found for " + queryField + ". Please create the index first.");
+                        return;
+                    }
+        
+                    Heapfile rel2_index_heapfile = new Heapfile(rel2 + "indexes");
+                    Scan rel2_scan = rel2_index_heapfile.openScan();
+                    //tuple;
+                    Tuple rel2_tuple;
+                    boolean rel2_found = false;
+                    RID rel2_rid = new RID();
+                    while((rel2_tuple = rel2_scan.getNext(rel2_rid)) != null)
+                    {
+                        rel2_tuple.setHdr((short) 1, new AttrType[]{new AttrType(AttrType.attrString)}, new short[]{30});
+                        String index_String = rel2_tuple.getStrFld(1);
+                        String[] index_parts = index_String.split("_");
+                        if (qf2 == Integer.parseInt(index_parts[1])) {        
+                            rel2_found = true;
+                        }
+                    }
+        
+                    if (!rel2_found && useLSH2.equalsIgnoreCase("H")) {
+                        System.out.println(rel2+"Index file not found for " + qf2 + ". Please create the index first.");
+                        return;
                     }
         
                     int noOutFlds = 0;
@@ -757,12 +771,12 @@ public class Query {
                             }
                         result.print(out_types);
                         table.add(result.copy(out_types));
+                        }
                         INLJoins joinOP = new INLJoins(rel2,qf2,queryField, distanceThreshold2,useLSH2, table, rightParts, columns);
                         ArrayList<ArrayList>join_result = joinOP.get_all_results();
                         for (ArrayList<Object> tuples:join_result){
                             System.out.println(tuples);
                             System.out.println("\n");
-                        }
                 }
              }catch (Exception e) {
                     e.printStackTrace();

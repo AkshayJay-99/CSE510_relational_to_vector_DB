@@ -124,7 +124,6 @@ public class INLJoins {
                 tuple.setHdr((short) 1, new AttrType[]{new AttrType(AttrType.attrString)}, new short[]{30});
                 String index_String = tuple.getStrFld(1);
                 String[] index_parts = index_String.split("_");
-                System.out.println("Index String: " + index_String);
                 if (queryField == Integer.parseInt(index_parts[1])) {
                     h = Integer.parseInt(index_parts[3]);
                     L = Integer.parseInt(index_parts[2]);           
@@ -147,6 +146,7 @@ public class INLJoins {
                  for (int i = 0; i < 100; i++) {
                      vector[i] = Short.parseShort(val[i].trim());
                  }
+                 System.out.println("Vector: " + Arrays.toString(vector));
                  Vector100Dtype targetVector =  new Vector100Dtype(vector);
                  if(useLSH.equals("H")){
                     try{     
@@ -181,7 +181,6 @@ public class INLJoins {
                 result.print(out_types);
                 ArrayList<Object> joined = new ArrayList<>(row);
                 joined.addAll(result.copy(out_types));
-                System.out.println(joined);
                 resultTuples.add(joined);
             }
 
