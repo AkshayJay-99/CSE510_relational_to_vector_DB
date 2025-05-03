@@ -143,8 +143,8 @@ public class Interface {
     public static void openDatabase(String dbName) {
         currentDatabaseName = dbName;
         dbpath = "/tmp/"+System.getProperty("user.name")+"."+dbName; 
-        int numPages = 120000; // Disk pages allocated
-        int bufferSize = 160; // Buffer pool size
+        int numPages = 32000; // Disk pages allocated
+        int bufferSize = 16000; // Buffer pool size
         new SystemDefs(dbpath, 0, bufferSize, "Clock");
         if (SystemDefs.JavabaseDB.db_num_pages() == 0) {
             System.out.println("Database is empty. Creating new database.");
@@ -317,7 +317,7 @@ public class Interface {
 
         boolean vector100DIndex = false;
 
-        if(schema[columnId + 1].attrType == AttrType.attrVector100D)
+        if(schema[columnId - 1].attrType == AttrType.attrVector100D)
         {
             System.out.println("We are creating a index on a Vector100DType");
             vector100DIndex = true;

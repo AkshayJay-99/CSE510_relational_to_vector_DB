@@ -349,7 +349,7 @@
 		 //System.out.println("🔧 Applying TEMP FIX for BTree_Layer0: Unpinning all tracked pages.");
 		 for (Integer pid : pinCountMap.keySet()) {
 			 try {
-				 SystemDefs.JavabaseBM.unpinPage(new PageId(pid), true);
+				 SystemDefs.JavabaseBM.unpinPage(new PageId(pid), false);
 				 //System.out.println("✅ [TEMP FIX] Forced unpin for Page: " + pid);
 			 } catch (Exception e) {
 				 //System.out.println("❌ [TEMP FIX FAILED] Could not unpin Page: " + pid);
@@ -370,7 +370,7 @@
 		 for (int i = 0; i < SystemDefs.JavabaseBM.getNumBuffers(); i++) {
 			 PageId pid = new PageId(i);
 			 try {
-				 SystemDefs.JavabaseBM.unpinPage(pid, true);
+				 SystemDefs.JavabaseBM.unpinPage(pid, false);
 				 remainingPinnedCount++;
 				 //System.out.println("⚠️ WARNING: Still pinned Page: " + pid.pid + " (Index 0)");
 			 } catch (PageUnpinnedException | HashEntryNotFoundException ignored) {
@@ -393,7 +393,7 @@
 		 // ✅ Step 1: Unpin Header Page
 		 if (headerPageId != null) {
 			 try {
-				 SystemDefs.JavabaseBM.unpinPage(headerPageId, true);
+				 SystemDefs.JavabaseBM.unpinPage(headerPageId, false);
 				 //System.out.println("✅ Header page unpinned successfully.");
 			 } catch (PageUnpinnedException | HashEntryNotFoundException e) {
 				 //System.out.println("⚠️ WARNING: Header page not found in buffer pool (already unpinned?)");
