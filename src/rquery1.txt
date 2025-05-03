@@ -1,1 +1,1 @@
-Range(2, target1, 10000, N, 1, 2)
+Range(2, target1, 100, H, 1, 2)

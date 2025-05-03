@@ -15,6 +15,7 @@ import global.*;
 
 public class Interface {
 
+    public static String dbpath;
     // Global variable to store the currently open database name
     private static String currentDatabaseName = null;
 
@@ -99,6 +100,8 @@ public class Interface {
                         PCounter.rcounter = 0;
                         PCounter.wcounter = 0;
                         if (requireDatabaseContext() && tokens.length == 5) {
+                            SystemDefs.JavabaseDB.closeDB();
+                            new SystemDefs(dbpath, 0, Integer.parseInt(tokens[4]), "Clock");
                             query(tokens[1], tokens[2], tokens[3], Integer.parseInt(tokens[4]));
                         } else {
                             System.out.println("Usage: query RELNAME1 RELNAME2 QSNAME NUMBUF");
@@ -139,9 +142,9 @@ public class Interface {
 
     public static void openDatabase(String dbName) {
         currentDatabaseName = dbName;
-        String dbpath = "/tmp/"+System.getProperty("user.name")+"."+dbName; 
+        dbpath = "/tmp/"+System.getProperty("user.name")+"."+dbName; 
         int numPages = 120000; // Disk pages allocated
-        int bufferSize = 16000; // Buffer pool size
+        int bufferSize = 160; // Buffer pool size
         new SystemDefs(dbpath, 0, bufferSize, "Clock");
         if (SystemDefs.JavabaseDB.db_num_pages() == 0) {
             System.out.println("Database is empty. Creating new database.");
@@ -418,6 +421,8 @@ public class Interface {
 
         scan.closescan();
         flushPages();
+        System.out.println("Disk pages read: " + PCounter.rcounter);
+        System.out.println("Disk pages written: " + PCounter.wcounter);
         //System.out.println("We have the attributes: " + attributes);
     }
 

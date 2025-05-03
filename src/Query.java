@@ -138,6 +138,8 @@ public class Query {
             }
             //  }
             results = nn.get_all_results();
+            int resultLength = results.size();
+            System.out.println("Number of Results: " + resultLength);
 
             for (Tuple result : results) {
                 for (int i = 0; i < noOutFlds; i++) {
