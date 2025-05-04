@@ -694,6 +694,8 @@ public class Query {
                         String index_String = tuple.getStrFld(1);
                         String[] index_parts = index_String.split("_");
                         if (queryField == Integer.parseInt(index_parts[1])) {
+                            h = Integer.parseInt(index_parts[3]);
+                            L = Integer.parseInt(index_parts[2]);  
                             found = true;
                         }
                     }

@@ -124,7 +124,7 @@ public class INLJoins {
                 tuple.setHdr((short) 1, new AttrType[]{new AttrType(AttrType.attrString)}, new short[]{30});
                 String index_String = tuple.getStrFld(1);
                 String[] index_parts = index_String.split("_");
-                if (queryField == Integer.parseInt(index_parts[1])) {
+                if (qfo == Integer.parseInt(index_parts[1])) {
                     h = Integer.parseInt(index_parts[3]);
                     L = Integer.parseInt(index_parts[2]);           
                 }
@@ -148,12 +148,14 @@ public class INLJoins {
                  }
                  System.out.println("Vector: " + Arrays.toString(vector));
                  Vector100Dtype targetVector =  new Vector100Dtype(vector);
+
+
                  if(useLSH.equals("H")){
                     try{     
                             rs = new RSIndexScan(
                             new IndexType(IndexType.LSHF_Index), relName2+".in",
-                            relName2 + '_' + queryField + '_' + L + '_' + h,
-                            schema, getStringSizes(schema), numAttributes, noOutFlds,  projlist, null, queryField, targetVector, rangeThreshold
+                            relName2 + '_' + qfo + '_' + L + '_' + h,
+                            schema, getStringSizes(schema), numAttributes, noOutFlds,  projlist, null, qfo, targetVector, rangeThreshold
                         );
                     }catch(Exception e){
                         e.printStackTrace();
@@ -164,7 +166,7 @@ public class INLJoins {
                 try{     
                     rs = new RSIndexScan(
                     new IndexType(IndexType.None), relName2+".in","",
-                    schema, getStringSizes(schema), numAttributes, noOutFlds,  projlist, null, queryField, targetVector, rangeThreshold
+                    schema, getStringSizes(schema), numAttributes, noOutFlds,  projlist, null, qfo, targetVector, rangeThreshold
                 );
                 }catch(Exception e){
                     e.printStackTrace();
