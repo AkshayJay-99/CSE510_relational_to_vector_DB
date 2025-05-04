@@ -129,7 +129,7 @@ public class Query {
             System.out.println("Processing Sort Query...");
             System.out.println("Query Field: " + queryField);
             System.out.println("Target Vector File: " + targetVectorFile);
-            System.out.println("Number of Results: " + k);
+            //System.out.println("Number of Results: " + k);
 
             List<Tuple> results = new ArrayList<>();
             AttrType[] out_types = new AttrType[noOutFlds];
