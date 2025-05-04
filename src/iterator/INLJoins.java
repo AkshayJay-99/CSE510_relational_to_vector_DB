@@ -146,7 +146,6 @@ public class INLJoins {
                  for (int i = 0; i < 100; i++) {
                      vector[i] = Short.parseShort(val[i].trim());
                  }
-                 System.out.println("Vector: " + Arrays.toString(vector));
                  Vector100Dtype targetVector =  new Vector100Dtype(vector);
 
 
