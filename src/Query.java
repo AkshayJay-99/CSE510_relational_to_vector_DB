@@ -658,6 +658,9 @@ public class Query {
             String rel1, String rel2, String queryLine,
             AttrType[] schema, short attrSize, int h, int L) {
                 try {
+                    System.out.println(rel1);
+                    System.out.println(rel2);
+
                     String inside = queryLine.replace("DJOIN(", "");
                     // System.out.println(inside);
                     int firstClose = inside.indexOf(")");
@@ -668,14 +671,13 @@ public class Query {
                     String useLSH2 = rightParts[2].trim();
                     ArrayList<Integer> columns2 = new ArrayList<>();
                     ArrayList<Object> columns = new ArrayList<>();
-        
+                    
                     for (int i = 3; i < rightParts.length; i++) {
                         columns2.add(Integer.parseInt(rightParts[i].trim()));
                     }
                     // System.out.println(rightParts);
                     
             
-                    int K = Integer.parseInt(rightParts[1].trim());
                     String innerIndexOption = rightParts[2].trim();
                     boolean useLSHInner = innerIndexOption.equalsIgnoreCase("H");
                     int queryField;
@@ -684,7 +686,8 @@ public class Query {
                     queryField = Integer.parseInt(parts[0].trim());
                     String targetVectorFile = parts[1].trim() + ".txt";
                     // System.out.println(targetVectorFile);
-                    int rangeThreshold = Integer.parseInt(parts[2].trim());
+                    int K = Integer.parseInt(parts[2].trim());
+                    System.out.println("K: "+K);
                     Vector100Dtype targetVector = readVectorFromFile(targetVectorFile);
                     // System.out.println(targetVector);
                     String useLSH = parts[3].trim();
@@ -763,7 +766,7 @@ public class Query {
                         }
                     }
                     else {
-                        System.out.println("Performing full heapfile scan for range query...");
+                        System.out.println("Performing full heapfile scan for nn query...");
                         TupleOrder[] order = new TupleOrder[2];
                         order[0] = new TupleOrder(TupleOrder.Ascending);
                         order[1] = new TupleOrder(TupleOrder.Descending);
