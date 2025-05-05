@@ -41,7 +41,7 @@ public class BatchDelete {
         
     }
 
-    public static void BatchDelete(String dbName, String dataFileName, String relName )
+    public static void BatchDelete(String dataFileName, String relName )
     {
         try {
             // 🔹 Step 1: Initialize MiniBase
@@ -172,8 +172,10 @@ public class BatchDelete {
                 Tuple tuple;
                 RID rid ;
                 ArrayList<RID> deletionList;
-                for (int i = 0; i < numAttributes; i++) {
-                    switch (schema[i].attrType) {
+                int i;
+                i = Integer.parseInt(line.trim().split("\\s+")[0]);
+                System.out.println(line.trim());
+                    switch (schema[i-1].attrType) {
                         case AttrType.attrInteger:
                             System.out.println("Attr Integer: "+line.trim());
                             //tuple.setIntFld(fieldNum, Integer.parseInt(line.trim()));
@@ -238,7 +240,7 @@ public class BatchDelete {
 
                                     String[] values = potential_indexes.get(j).split("_");
                                     
-                                    int columToCheck = Integer.parseInt(values[1]);
+                                    int columToCheck = Integer.parseInt(values[1])-1;
                                      switch (schema[columToCheck].attrType) 
                                      {
                                         // case AttrType.attrInteger:
@@ -260,10 +262,10 @@ public class BatchDelete {
                                             Vector100Dtype vecVal = tester.get100DVectorFld(columToCheck+1);
                                             //System.out.println("Checking for a 100DVector");
                                             int column = Integer.parseInt(values[1]);
-                                            int hashes = Integer.parseInt(values[2]);
-                                            int layers = Integer.parseInt(values[3]);
+                                            int hashes = Integer.parseInt(values[3]);
+                                            int layers = Integer.parseInt(values[2]);
 
-                                            LSHFFile lshf = new LSHFFile(dbName+'_'+relName+'_'+(column)+'_'+hashes+'_'+layers, hashes, layers); 
+                                            LSHFFile lshf = new LSHFFile(relName+'_'+(column)+'_'+layers+'_'+hashes, hashes, layers); 
                                             lshf.DeleteFile(vecVal);
                                             lshf.close();
                                             break;
@@ -362,7 +364,7 @@ public class BatchDelete {
 
                                     String[] values = potential_indexes.get(j).split("_");
                                     
-                                    int columToCheck = Integer.parseInt(values[1]);
+                                    int columToCheck = Integer.parseInt(values[1])-1;
                                      switch (schema[columToCheck].attrType) 
                                      {
                                         // case AttrType.attrInteger:
@@ -384,10 +386,10 @@ public class BatchDelete {
                                             Vector100Dtype vecVal = tester.get100DVectorFld(columToCheck+1);
                                             //System.out.println("Checking for a 100DVector");
                                             int column = Integer.parseInt(values[1]);
-                                            int hashes = Integer.parseInt(values[2]);
-                                            int layers = Integer.parseInt(values[3]);
+                                            int hashes = Integer.parseInt(values[3]);
+                                            int layers = Integer.parseInt(values[2]);
 
-                                            LSHFFile lshf = new LSHFFile(dbName+'_'+relName+'_'+(column)+'_'+hashes+'_'+layers, hashes, layers); 
+                                            LSHFFile lshf = new LSHFFile(relName+'_'+(column)+'_'+layers+'_'+hashes, hashes, layers); 
                                             lshf.DeleteFile(vecVal);
                                             lshf.close();
                                             break;
@@ -417,10 +419,8 @@ public class BatchDelete {
                     }
                     //fieldNum++;
                     
-                    if (i < numAttributes - 1 && line != null) line = reader.readLine(); // Read next attribute
-                    if(line == null)
-                        break;
-                }
+
+            
             
                 // Insert tuple into heap file
                 //System.out.println(tuple.get100DVectorFld(2));

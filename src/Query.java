@@ -155,6 +155,7 @@ public class Query {
                 }
                 result.print(out_types);
             }
+            System.out.println("Number of results: "+results.size());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -276,6 +277,7 @@ public class Query {
             filterExpr[0].operand2.integer = literalValue;
             filterExpr[1] = null;
 
+            int count = 0;
             FileScan fscan = null;
             try {
                 fscan = new FileScan(dataFile, schema, getStringSizes(schema), (short) numAttributes, noOutFlds, projlist, null);
@@ -294,6 +296,7 @@ public class Query {
                 try {
                     if (t.getFloFld(outFieldIndex) == literalValue) {
                         t.print(out_types);
+                        count++;
                     }
                     t = fscan.get_next();
                 } catch (Exception e) {
@@ -301,6 +304,7 @@ public class Query {
                 }
                 
             }
+            System.out.println("Number of results: " + count);
             
             fscan.close();
             flushPages();
@@ -398,6 +402,7 @@ public class Query {
                 }
                 result.print(out_types);
             }
+            System.out.println("Number of results: "+results.size());
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -494,6 +499,8 @@ public class Query {
                 }
                 result.print(out_types);
             }
+            System.out.println("Number of results: "+results.size());
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -629,7 +636,7 @@ public class Query {
                 for (int i = 0; i < noOutFlds; i++) {
                     out_types[i] = schema[projlist[i].offset - 1];
                     }
-                result.print(out_types);
+                //result.print(out_types);
                 table.add(result.copy(out_types));
                 }
                 INLJoins joinOP = new INLJoins(rel2,qf2,queryField, distanceThreshold2,useLSH2, table, rightParts, columns);
@@ -638,6 +645,8 @@ public class Query {
                     System.out.println(tuples);
                     System.out.println("\n");
                 }
+                System.out.println("Number of results: "+join_result.size());
+
         
      }catch (Exception e) {
             e.printStackTrace();
@@ -780,6 +789,7 @@ public class Query {
                             System.out.println(tuples);
                             System.out.println("\n");
                 }
+                System.out.println("Number of results: "+join_result.size());
              }catch (Exception e) {
                     e.printStackTrace();
                 }

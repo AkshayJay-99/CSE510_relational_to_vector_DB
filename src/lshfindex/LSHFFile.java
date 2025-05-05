@@ -508,7 +508,7 @@ public class LSHFFile extends IndexFile
             if (pageId != null) {
                 // ✅ Reload existing index
                 //System.out.println("✅ Loading existing B+Tree index: " + indexName + " (PageId: " + pageId.pid + ")");
-                System.out.println("existing index found: " + indexName);
+                //System.out.println("existing index found: " + indexName);
                 this.btreeIndex[i] = new LSHFBTreeFile(indexName);
             } else {
                 System.out.println("❌ No existing index found, creating a new one: " + indexName);

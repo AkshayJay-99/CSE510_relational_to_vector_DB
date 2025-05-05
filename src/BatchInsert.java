@@ -184,7 +184,7 @@ public class BatchInsert {
             int numPages = 12000; // Disk pages allocated
             int bufferSize = 16000; // Buffer pool size
 
-            BatchInsert(dbName, dataFileName, relName);
+            BatchInsert(dataFileName, relName);
             
             
         }
@@ -193,7 +193,7 @@ public class BatchInsert {
     }
 
 
-    public static void BatchInsert(String dbName, String dataFileName, String relName)
+    public static void BatchInsert(String dataFileName, String relName)
     {
         try {
             // 🔹 Step 1: Initialize MiniBase
@@ -363,7 +363,7 @@ public class BatchInsert {
 
                     String[] values = potential_indexes.get(j).split("_");
                     
-                    int columToCheck = Integer.parseInt(values[1]);
+                    int columToCheck = Integer.parseInt(values[1])-1;
                         switch (schema[columToCheck].attrType) 
                         {
                         // case AttrType.attrInteger:
@@ -372,10 +372,8 @@ public class BatchInsert {
                         case AttrType.attrReal:
                             float  floVla = tuple.getFloFld(columToCheck+1);
                             //System.out.println("Checking for a realNum attr: " + floVla);
-                            String btreeName = relName + "_" + (Integer.parseInt(values[1]) -1);
+                            String btreeName = relName + "_" + (Integer.parseInt(values[1]));
                             PageId btree_pid = SystemDefs.JavabaseDB.get_file_entry(btreeName);
-                            System.out.println("We found a btree with pid: " + btree_pid);
-                            System.out.println("Checking btree name: " + btreeName);
                             BTreeFile btree = new BTreeFile(btreeName);
                             btree.IntegerKey key = new btree.IntegerKey((int) floVla);
                             btree.insert(key, recordID);
@@ -388,10 +386,10 @@ public class BatchInsert {
                             Vector100Dtype vecVal = tuple.get100DVectorFld(columToCheck+1);
                             //System.out.println("Checking for a 100DVector");
                             int column = Integer.parseInt(values[1]);
-                            int hashes = Integer.parseInt(values[2]);
-                            int layers = Integer.parseInt(values[3]);
+                            int hashes = Integer.parseInt(values[3]);
+                            int layers = Integer.parseInt(values[2]);
 
-                            LSHFFile lshf = new LSHFFile(dbName+'_'+relName+'_'+(column)+'_'+hashes+'_'+layers, hashes, layers); 
+                            LSHFFile lshf = new LSHFFile(relName+'_'+(column)+'_'+layers+'_'+hashes, hashes, layers); 
                             Vector100DKey insert = new Vector100DKey(vecVal);
                             lshf.insert(insert, recordID);
                             lshf.close();

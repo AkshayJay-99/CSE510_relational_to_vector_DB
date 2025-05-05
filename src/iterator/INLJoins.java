@@ -179,7 +179,7 @@ public class INLJoins {
                 for (int i = 0; i < noOutFlds; i++) {
                     out_types[i] = schema[projlist[i].offset - 1];
                     }
-                result.print(out_types);
+                //result.print(out_types);
                 ArrayList<Object> joined = new ArrayList<>(row);
                 joined.addAll(result.copy(out_types));
                 resultTuples.add(joined);

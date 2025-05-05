@@ -464,7 +464,7 @@ public class Interface {
                 " in database: " + currentDatabaseName);
 
         //BatchInsert(dbName, dataFileName, relName);
-        BatchInsert.BatchInsert(currentDatabaseName, updateFile, relName);
+        BatchInsert.BatchInsert(updateFile, relName);
 
         
         // TODO: Implement batch insert logic
@@ -474,7 +474,7 @@ public class Interface {
         System.out.println("Deleting from " + relName + " using: " + updateFile +
                 " in database: " + currentDatabaseName);
         //BatchDelete(dbName, dataFileName, relName);
-        BatchDelete.BatchDelete(currentDatabaseName, updateFile, relName);
+        BatchDelete.BatchDelete(updateFile, relName);
         // TODO: Implement batch delete logic
     }
 
